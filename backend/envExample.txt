@@ -5,8 +5,8 @@ NODE_ENV=development
 # Database Configuration
 DB_HOST=localhost
 DB_PORT=5432
-DB_NAME=mise_db
-DB_USER=mise_user
+DB_NAME=souschef_db
+DB_USER=souschef_user
 DB_PASSWORD=your_secure_password
 
 # JWT Configuration

@@ -1,7 +1,7 @@
 {
-  "name": "mise-backend",
+  "name": "souschef-backend",
   "version": "1.0.0",
-  "description": "Backend API for Mise - AI-Powered Recipe Capture & Cooking Assistant",
+  "description": "Backend API for souschef - AI-Powered Recipe Capture & Cooking Assistant",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
