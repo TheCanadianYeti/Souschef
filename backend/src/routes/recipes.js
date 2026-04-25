@@ -10,23 +10,38 @@ const router = express.Router();
 
 const GET_SMART_IMAGE = (title = '', tags = []) => {
     const combined = (title + ' ' + tags.join(' ')).toLowerCase();
-    const library = {
-        shrimp: 'https://images.unsplash.com/photo-1559737558-2f5a35f4523b',
-        chicken: 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d',
-        pasta: 'https://images.unsplash.com/photo-1473093226795-af9932fe5856',
-        steak: 'https://images.unsplash.com/photo-1546241072-48010ad28c2c',
-        salmon: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288',
-        salad: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd',
-        dessert: 'https://images.unsplash.com/photo-1563729784474-d77dbb933a9e',
-        breakfast: 'https://images.unsplash.com/photo-1525351484163-7529414344d8',
-        soup: 'https://images.unsplash.com/photo-1547592166-23ac45744acd',
-        burger: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd',
-        pizza: 'https://images.unsplash.com/photo-1513104890138-7c749659a591'
-    };
-    for (const [key, url] of Object.entries(library)) {
-        if (combined.includes(key)) return `${url}?auto=format&fit=crop&w=800&q=80`;
+    
+    // Priority 1: High-quality curated library for common categories
+    const library = [
+        { key: 'shrimp', url: 'https://images.unsplash.com/photo-1559737558-2f5a35f4523b' },
+        { key: 'seafood', url: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2' },
+        { key: 'chicken', url: 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d' },
+        { key: 'pasta', url: 'https://images.unsplash.com/photo-1473093226795-af9932fe5856' },
+        { key: 'steak', url: 'https://images.unsplash.com/photo-1546241072-48010ad28c2c' },
+        { key: 'beef', url: 'https://images.unsplash.com/photo-1558030006-450675393462' },
+        { key: 'salmon', url: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288' },
+        { key: 'salad', url: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd' },
+        { key: 'dessert', url: 'https://images.unsplash.com/photo-1563729784474-d77dbb933a9e' },
+        { key: 'breakfast', url: 'https://images.unsplash.com/photo-1525351484163-7529414344d8' },
+        { key: 'egg', url: 'https://images.unsplash.com/photo-1525351484163-7529414344d8' },
+        { key: 'soup', url: 'https://images.unsplash.com/photo-1547592166-23ac45744acd' },
+        { key: 'burger', url: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd' },
+        { key: 'pizza', url: 'https://images.unsplash.com/photo-1513104890138-7c749659a591' },
+        { key: 'noodle', url: 'https://images.unsplash.com/photo-1612929633738-8fe44f7ec841' },
+        { key: 'rice', url: 'https://images.unsplash.com/photo-1512058560366-cd2429598632' },
+        { key: 'pork', url: 'https://images.unsplash.com/photo-1544025162-d76694265947' }
+    ];
+
+    for (const item of library) {
+        if (combined.includes(item.key)) {
+            return `${item.url}?auto=format&fit=crop&w=800&q=80`;
+        }
     }
-    return 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80';
+
+    // Priority 2: If no library match, use a dynamic search with a much more aggressive query
+    const searchTerms = [...tags, title.split(' ').pop()].filter(Boolean).slice(0, 3).join(',');
+    const randomSeed = Math.floor(Math.random() * 1000000);
+    return `https://loremflickr.com/800/600/food,${encodeURIComponent(searchTerms)}/all?lock=${randomSeed}`;
 };
 
 // Multer config for memory storage (since we upload buffer directly to GCP Vision)
@@ -36,21 +51,23 @@ const upload = multer({
 });
 
 /**
- * Saves a parsed recipe to PostgreSQL
- * Uses a transaction to ensure recipe, ingredients, and steps are all persisted together.
+ * Save a recipe to the database with all its components
  */
-const saveRecipeToDb = async (parsedRecipe, userId) => {
-    const client = await db.getClient();
+const saveRecipeToDb = async (userId, parsedRecipe) => {
+    const client = await db.pool.connect();
     try {
         await client.query('BEGIN');
 
-        // 1. Insert recipe
+        const uniqueSeed = Date.now() + Math.random();
+        const smartImage = GET_SMART_IMAGE(parsedRecipe.title, parsedRecipe.tags);
+        const finalImageUrl = parsedRecipe.image_url || (smartImage.includes('?') ? `${smartImage}&unique=${uniqueSeed}` : `${smartImage}?unique=${uniqueSeed}`);
+
+        // Insert Recipe
         const recipeRes = await client.query(
             `INSERT INTO recipes (
                 user_id, title, description, source_url, source_type, 
                 servings, cook_time, prep_time, difficulty, tags, image_url
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-            RETURNING *`,
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
             [
                 userId,
                 parsedRecipe.title || 'Imported Recipe',
@@ -62,7 +79,7 @@ const saveRecipeToDb = async (parsedRecipe, userId) => {
                 parsedRecipe.prepTime || parsedRecipe.prep_time || 0,
                 parsedRecipe.difficulty || 'Medium',
                 parsedRecipe.tags || [],
-                parsedRecipe.image_url || `${GET_SMART_IMAGE(parsedRecipe.title, parsedRecipe.tags)}&sig=${Date.now()}`
+                finalImageUrl
             ]
         );
 
@@ -144,7 +161,7 @@ router.post('/capture',
             // You can use a placeholder or leave it blank
             // 3. Save to database (Placeholder logic)
             const userId = req.user?.id || '00000000-0000-0000-0000-000000000000';
-            const savedRecipe = await saveRecipeToDb(parsedRecipe, userId);
+            const savedRecipe = await saveRecipeToDb(userId, parsedRecipe);
 
             res.json({
                 success: true,
@@ -188,7 +205,7 @@ router.post('/from-url',
 
             // 3. Save to database (Placeholder logic)
             const userId = req.user?.id || '00000000-0000-0000-0000-000000000000';
-            const savedRecipe = await saveRecipeToDb(parsedRecipe, userId);
+            const savedRecipe = await saveRecipeToDb(userId, parsedRecipe);
 
             res.json({
                 success: true,
