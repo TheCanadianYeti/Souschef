@@ -73,7 +73,7 @@ const config = {
     // Gemini / Gemma API
     gemma: {
         apiKey: process.env.GEMMA_API_KEY,
-        model: process.env.GEMMA_MODEL || 'gemma-2-9b-it'
+        model: process.env.GEMMA_MODEL || 'gemma-4-26b-a4b-it'
     },
 
     // Rate Limiting

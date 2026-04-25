@@ -2,7 +2,7 @@ const axios = require('axios');
 const config = require('../config');
 
 /**
- * Parse raw text into structured recipe JSON using Google Gemini API
+ * Parse raw text into structured recipe JSON using Gemma 4 API
  * @param {string} rawText - The text extracted from Vision API
  * @returns {Promise<Object>} - Structured recipe data
  */

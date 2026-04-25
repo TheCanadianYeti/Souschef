@@ -112,7 +112,7 @@ router.post('/capture',
                 throw new AppError('No text could be detected in the image', 422, 'UNPROCESSABLE_ENTITY');
             }
 
-            // 2. Parse text into structured recipe using Claude
+            // 2. Parse text into structured recipe using Gemma 4
             const parsedRecipe = await parseRecipeText(extractedText);
 
             // Since we aren't using a bucket, we don't have a permanent image URL
@@ -135,7 +135,7 @@ router.post('/capture',
 // @route   POST /api/recipes/from-url
 // @desc    Extract recipe from URL (AI parsing)
 // @access  Private
-// Note: This is a placeholder - actual implementation would use Claude API
+// Note: This is a placeholder - actual implementation would use Gemma 4 26B A4B IT
 router.post('/from-url',
     optionalAuth,
     body('url').isURL(),
@@ -155,7 +155,7 @@ router.post('/from-url',
                 throw new AppError('Could not extract meaningful text from this URL', 422, 'UNPROCESSABLE_ENTITY');
             }
 
-            // 2. Parse text into structured recipe using Gemma
+            // 2. Parse text into structured recipe using Gemma 4
             const parsedRecipe = await parseRecipeText(extractedText);
             
             parsedRecipe.sourceType = 'url';
