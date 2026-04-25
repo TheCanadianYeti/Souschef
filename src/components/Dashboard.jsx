@@ -9,6 +9,8 @@ import Link from 'next/link';
 export default function Dashboard() {
   const [recipes, setRecipes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTag, setSelectedTag] = useState(null);
 
   useEffect(() => {
     // TODO: BACKEND INTEGRATION
@@ -27,6 +29,16 @@ export default function Dashboard() {
     loadRecipes();
   }, []);
 
+  const filteredRecipes = recipes.filter(recipe => {
+    const matchesSearch = recipe.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          recipe.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          recipe.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesTag = selectedTag ? recipe.tags.includes(selectedTag) : true;
+    return matchesSearch && matchesTag;
+  });
+
+  const allTags = Array.from(new Set(recipes.flatMap(r => r.tags)));
+
   return (
     <div className="animate-in fade-in duration-500 pt-4">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
@@ -40,7 +52,9 @@ export default function Dashboard() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
             <input 
               type="text" 
-              placeholder="Search recipes..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search recipes or tags..." 
               className="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all"
             />
           </div>
@@ -54,6 +68,26 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {!loading && allTags.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-8">
+          <button 
+            onClick={() => setSelectedTag(null)}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${!selectedTag ? 'bg-primary-500 text-white shadow-sm' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
+          >
+            All
+          </button>
+          {allTags.map(tag => (
+            <button 
+              key={tag}
+              onClick={() => setSelectedTag(tag === selectedTag ? null : tag)}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${selectedTag === tag ? 'bg-primary-500 text-white shadow-sm' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+      )}
+
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3].map(i => (
@@ -62,9 +96,16 @@ export default function Dashboard() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {recipes.map(recipe => (
+          {filteredRecipes.map(recipe => (
             <RecipeCard key={recipe.id} recipe={recipe} />
           ))}
+          {filteredRecipes.length === 0 && (
+            <div className="col-span-full py-12 text-center text-gray-500 dark:text-gray-400 glass rounded-3xl border border-gray-200 dark:border-gray-800">
+              <Search className="mx-auto mb-4 text-gray-400" size={48} />
+              <p className="text-xl font-medium mb-2">No recipes found</p>
+              <p>Try adjusting your search or tag filters.</p>
+            </div>
+          )}
         </div>
       )}
     </div>
