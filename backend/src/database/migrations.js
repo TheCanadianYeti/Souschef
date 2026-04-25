@@ -243,6 +243,16 @@ const migrations = [
             CREATE INDEX IF NOT EXISTS idx_recipe_version_history_recipe_id ON recipe_version_history(recipe_id);
         `,
         down: 'DROP TABLE IF EXISTS recipe_version_history CASCADE;'
+    },
+    // Seed default user for hackathon demo
+    {
+        name: 'seed_default_user',
+        up: `
+            INSERT INTO users (id, email, display_name)
+            VALUES ('00000000-0000-0000-0000-000000000000', 'guest@souschef.hackathon', 'Hackathon Guest')
+            ON CONFLICT (id) DO NOTHING;
+        `,
+        down: "DELETE FROM users WHERE id = '00000000-0000-0000-0000-000000000000';"
     }
 ];
 

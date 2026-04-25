@@ -7,7 +7,7 @@ const config = require('../config');
  * @returns {Promise<Object>} - Structured recipe data
  */
 const parseRecipeText = async (rawText) => {
-    console.log('[AI] Starting recipe parsing...');
+    console.log(`[AI] Starting recipe parsing (Text length: ${rawText.length} chars)...`);
     
     if (!config.gemma.apiKey) {
         console.warn('[AI] GEMMA_API_KEY missing, using mock fallback.');
@@ -15,13 +15,15 @@ const parseRecipeText = async (rawText) => {
     }
 
     const prompt = `
-        EXTRACT ALL INGREDIENTS AND STEPS from the following recipe text.
+        EXTRACT ALL INGREDIENTS AND STEPS from the following text (it might be a video transcript or a blog post).
         
-        Raw Text:
+        Source Text:
         """
         ${rawText}
         """
 
+        If this is a transcript, the measurements might be spoken (e.g. "two cups" instead of "2 cups"). Convert them to standard format.
+        
         Output MUST be a valid JSON object with this exact structure:
         {
             "title": "Recipe Title",
@@ -36,7 +38,8 @@ const parseRecipeText = async (rawText) => {
             "steps": [
                 { "stepNumber": 1, "instruction": "Step instruction", "durationSeconds": 60 }
             ],
-            "tags": ["Tag1", "Tag2"]
+            "tags": ["Tag1", "Tag2"],
+            "visualKeyword": "A 2-3 word search term for an image (e.g. 'Creamy Tomato Soup')"
         }
 
         Be extremely thorough. List EVERY ingredient mentioned. 
@@ -44,19 +47,25 @@ const parseRecipeText = async (rawText) => {
         Return ONLY the raw JSON.
     `;
 
-    // We will try the configured model first, then fall back to a known working model
-    const modelsToTry = [config.gemma.model, 'gemini-1.5-flash', 'gemini-1.5-pro'];
+    // Try Gemini models in order — gemma-4 first (configured), then current stable Gemini fallbacks.
+    // gemini-1.5-flash / gemini-1.5-pro are removed from v1beta; use gemini-2.0-flash instead.
+    const modelsToTry = [
+        'gemini-2.5-flash',
+        'gemini-2.5-pro',
+        'gemini-2.0-flash',
+        'gemini-1.5-flash'
+    ];
     
     for (const model of modelsToTry) {
         try {
             console.log(`[AI] Attempting extraction with model: ${model}`);
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${config.gemma.apiKey}`;
+            const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${config.gemma.apiKey}`;
             
             const response = await axios.post(url, {
                 contents: [{
                     parts: [{ text: prompt }]
                 }]
-            }, { timeout: 15000 });
+            }, { timeout: 30000 }); // 30s — Gemma 4 can be slow
 
             if (response.data?.candidates?.[0]?.content?.parts?.[0]?.text) {
                 const content = response.data.candidates[0].content.parts[0].text;

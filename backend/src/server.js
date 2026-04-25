@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -13,15 +14,26 @@ const { errorHandler, notFound } = require('./middleware');
 
 const app = express();
 
-// Security middleware
-app.use(helmet());
-
-// CORS configuration
+// CORS configuration - Must come before other middleware that might set headers
 app.use(cors({
-    origin: config.cors.origins,
+    origin: (origin, callback) => {
+        const allowedOrigins = config.cors.origins;
+        if (allowedOrigins.includes('*') || !origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
+
+// Security middleware - Relaxed for local hackathon development
+app.use(helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginOpenerPolicy: false,
+    contentSecurityPolicy: false // Disable CSP for local dev to avoid blocking localhost requests
 }));
 
 // Body parsing - Increased limits for AI/Recipe data

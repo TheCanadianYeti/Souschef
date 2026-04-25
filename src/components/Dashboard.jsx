@@ -73,7 +73,7 @@ export default function Dashboard() {
             onClick={() => setSelectedTag(null)}
             className={`px-5 py-1.5 rounded-full text-sm font-bold transition-all border ${
               !selectedTag
-                ? 'bg-text-primary text-bg-color border-text-primary'
+                ? 'bg-text-primary text-page border-text-primary'
                 : 'bg-surface-color border-border-color text-text-secondary hover:border-accent-color'
             }`}
           >

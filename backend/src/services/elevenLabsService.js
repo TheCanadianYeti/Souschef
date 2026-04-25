@@ -1,64 +1,84 @@
-const { ElevenLabsClient } = require('elevenlabs');
+const axios = require('axios');
 
 /**
- * Service for interacting with ElevenLabs API
- */
-
-// We initialize the client inside functions or pass the key to avoid crashing if it's missing on startup
-let client = null;
-
-const getClient = () => {
-    if (!client) {
-        console.log('Initializing ElevenLabs client...');
-        if (!process.env.ELEVENLABS_API_KEY || process.env.ELEVENLABS_API_KEY === 'your_elevenlabs_api_key_here') {
-            console.warn("ELEVENLABS_API_KEY is not set or is a placeholder. TTS will be mocked.");
-            return null;
-        }
-        console.log('ElevenLabs API Key found (first 5 chars):', process.env.ELEVENLABS_API_KEY.substring(0, 5));
-        client = new ElevenLabsClient({
-            apiKey: process.env.ELEVENLABS_API_KEY
-        });
-    }
-    return client;
-};
-
-/**
- * Generate Speech from Text (TTS)
+ * Generate Speech from Text (TTS) using ElevenLabs API
+ * Uses the "known good format" with direct axios calls.
+ * 
  * @param {string} text - The text to synthesize
- * @returns {Buffer|null} - Audio buffer, or null if mocking
+ * @returns {Buffer|null} - Audio buffer, or null if key is missing
  */
 const generateSpeech = async (text) => {
-    console.log(`TTS request received for text: "${text.substring(0, 30)}..."`);
-    const api = getClient();
-    if (!api) {
-        console.log(`[Mock TTS] Generating speech for: "${text}"`);
-        // If no API key, return null (the frontend can choose to do nothing, or we just return an empty buffer)
+    const apiKey = process.env.ELEVENLABS_API_KEY;
+    
+    if (!apiKey || apiKey === 'your_elevenlabs_api_key_here') {
+        console.warn("ELEVENLABS_API_KEY is not set or is a placeholder. TTS will be mocked.");
         return null;
     }
 
     try {
-        const voiceId = "wWWn96OtTHu1sn8SRGEr"; 
-        console.log(`[ElevenLabs] Using voice: ${voiceId} with multilingual-v2`);
-
-        const audioStream = await api.textToSpeech.convert(voiceId, {
-            text: text,
-            model_id: "eleven_multilingual_v2", // Most compatible model
-            output_format: "mp3_44100_128",
+        // 1. Fetch available voices to ensure we use one that works with your current plan
+        console.log('[ElevenLabs] Fetching available voices...');
+        const voicesResponse = await axios.get('https://api.elevenlabs.io/v1/voices', {
+            headers: { 'xi-api-key': apiKey }
         });
 
-        const chunks = [];
-        for await (const chunk of audioStream) {
-            chunks.push(chunk);
+        if (!voicesResponse.data.voices || voicesResponse.data.voices.length === 0) {
+            throw new Error('No voices found in this ElevenLabs account.');
         }
-        return Buffer.concat(chunks);
+
+        const voice = voicesResponse.data.voices[0];
+        const voiceId = voice.voice_id;
+        console.log(`[ElevenLabs] Using voice: ${voice.name} (${voiceId})`);
+
+        console.log(`[ElevenLabs] Generating speech for text: "${text.substring(0, 30)}..."`);
+
+        const response = await axios.post(
+            `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`,
+            {
+                text: text,
+                model_id: "eleven_multilingual_v2",
+                voice_settings: {
+                    stability: 0.5,
+                    similarity_boost: 0.75
+                }
+            },
+            {
+                headers: {
+                    'xi-api-key': apiKey,
+                    'Content-Type': 'application/json',
+                    'accept': 'audio/mpeg'
+                },
+                responseType: 'arraybuffer',
+                timeout: 30000 
+            }
+        );
+
+        console.log(`[ElevenLabs] Successfully generated audio: ${response.data.byteLength} bytes.`);
+        return Buffer.from(response.data);
     } catch (error) {
         console.error("--- ELEVENLABS API ERROR ---");
-        if (error.status === 402) {
-            console.error("Status: 402 (Quota Exceeded / Subscription Required)");
-            console.error("Hale's voice may require a paid ElevenLabs tier or more credits.");
+        if (error.response) {
+            const status = error.response.status;
+            console.error(`Status: ${status}`);
+            
+            const data = error.response.data;
+            let errorMsg = '';
+            
+            if (data instanceof ArrayBuffer || Buffer.isBuffer(data)) {
+                errorMsg = Buffer.from(data).toString();
+            } else {
+                errorMsg = JSON.stringify(data, null, 2);
+            }
+            
+            console.error('Error Body:', errorMsg);
+
+            if (status === 401) {
+                console.error("Authentication failed. Check your ELEVENLABS_API_KEY.");
+            } else if (status === 402) {
+                console.error("Quota exceeded or subscription required.");
+            }
         } else {
-            console.error(`Status: ${error.status || 'Unknown'}`);
-            console.error(`Message: ${error.message}`);
+            console.error('Error Message:', error.message);
         }
         throw error;
     }

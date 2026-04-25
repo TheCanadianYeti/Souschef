@@ -3,8 +3,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
-import { fetchRecipeById } from '../../../data/mockRecipes';
-import { Clock, Users, Play, Pause, ShoppingCart, ArrowLeft, Mic, ChevronRight, ChevronLeft, Check, ChefHat, Minimize2 } from 'lucide-react';
+import { fetchRecipeById, deleteLocalRecipe } from '../../../data/mockRecipes';
+import { Clock, Users, Play, Pause, ShoppingCart, ArrowLeft, Mic, ChevronRight, ChevronLeft, Check, ChefHat, Minimize2, Trash2, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 
 const playChime = () => {
@@ -37,9 +37,12 @@ const playChime = () => {
 
 export default function RecipePage() {
   const { id } = useParams();
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [recipe, setRecipe] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
   const [isCooking, setIsCooking] = useState(false);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isListening, setIsListening] = useState(false);
@@ -56,6 +59,8 @@ export default function RecipePage() {
   const [isProcessingCommand, setIsProcessingCommand] = useState(false);
   const [debugLog, setDebugLog] = useState([]);
   const [diag, setDiag] = useState({ backend: 'checking...', mic: 'unknown', speech: 'unknown' });
+  const [recipeReady, setRecipeReady] = useState(false);
+
 
   // Refs so callbacks (onend, executeChefCommand) always see live values,
   // not stale closures captured at effect-setup time.
@@ -63,13 +68,17 @@ export default function RecipePage() {
   const isAssistantEnabledRef = useRef(isAssistantEnabled);
   const isProcessingCommandRef = useRef(isProcessingCommand);
   const isCookingRef = useRef(isCooking);
+  const recipeRef = useRef(null);
   const recognitionRef = useRef(null);
+  const currentAudioRef = useRef(null);
+  const isSpeakingRef = useRef(false);
 
   // Keep refs in sync with state
   useEffect(() => { currentStepIndexRef.current = currentStepIndex; }, [currentStepIndex]);
   useEffect(() => { isAssistantEnabledRef.current = isAssistantEnabled; }, [isAssistantEnabled]);
   useEffect(() => { isProcessingCommandRef.current = isProcessingCommand; }, [isProcessingCommand]);
   useEffect(() => { isCookingRef.current = isCooking; }, [isCooking]);
+  useEffect(() => { recipeRef.current = recipe; }, [recipe]);
 
   useEffect(() => {
     setMounted(true);
@@ -85,7 +94,7 @@ export default function RecipePage() {
         };
 
         try {
-          const res = await fetch('http://localhost:3001/api/health');
+          const res = await fetch('http://localhost:3001/api/health', { credentials: 'include' });
           s.backend = res.ok ? 'Connected' : `Error: ${res.status}`;
         } catch (e) {
           s.backend = 'Disconnected';
@@ -121,7 +130,6 @@ export default function RecipePage() {
   useEffect(() => {
     if (typeof window === 'undefined' || !mounted) return;
 
-<<<<<<< HEAD
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) return;
 
@@ -134,45 +142,15 @@ export default function RecipePage() {
     recognition.onstart = () => {
       setIsListening(true);
       addLog('Microphone listening...');
-=======
-        recognition.onstart = () => {
-          setIsListening(true);
-          addLog('Microphone listening...');
-        };
-        recognition.onerror = (e) => {
-          addLog(`Mic error: ${e.error}`);
-          setIsListening(false);
-        };
-        recognition.onresult = (event) => {
-          const transcript = event.results[0][0].transcript.toLowerCase();
-          addLog(`Heard: "${transcript}"`);
-          if (transcript.includes('chef')) {
-            const cleanCommand = transcript
-              .replace(/hey chef|hi chef|chef/g, '')
-              .replace(/^[,.\s]+/, '')
-              .trim();
-            executeChefCommand(cleanCommand || 'repeat');
-          }
-        };
-        recognition.onend = () => {
-          setIsListening(false);
-          // Auto-restart if we aren't currently "Thinking..."
-          if (isCooking && isAssistantEnabled && !isProcessingCommand) {
-            try { recognition.start(); } catch (e) { }
-          }
-        };
-        setSpeechRecognition(recognition);
-      }
-    }
-    return () => {
-      if (recognition) try { recognition.stop(); } catch (e) { }
->>>>>>> 2864eb83eb8821adc06eb0ba6fcd270fc2f98bd2
     };
     recognition.onerror = (e) => {
       addLog(`Mic error: ${e.error}`);
       setIsListening(false);
     };
     recognition.onresult = (event) => {
+      // If we are not in cooking mode or are currently speaking, ignore the results
+      if (!isCookingRef.current || isSpeakingRef.current) return;
+
       const transcript = event.results[0][0].transcript.toLowerCase();
       addLog(`Heard: "${transcript}"`);
       if (transcript.includes('chef')) {
@@ -194,7 +172,7 @@ export default function RecipePage() {
     setSpeechRecognition(recognition);
 
     return () => {
-      try { recognition.stop(); } catch(e) {}
+      try { recognition.abort(); } catch(e) {}
       recognitionRef.current = null;
     };
   }, [mounted]); // Only (re)create when mounted — refs handle live state
@@ -210,16 +188,25 @@ export default function RecipePage() {
   useEffect(() => {
     if (isCooking && isAssistantEnabled && speechRecognition) {
       try { speechRecognition.start(); } catch(e) {}
-    } else if (!isAssistantEnabled && speechRecognition) {
-      try { speechRecognition.stop(); } catch(e) {}
+    } else if (speechRecognition) {
+      // Force stop if not cooking OR if assistant is disabled
+      try { speechRecognition.abort(); } catch(e) {}
     }
   }, [isCooking, isAssistantEnabled, speechRecognition]);
 
   useEffect(() => {
     if (isCooking && recipe && recipe.steps[currentStepIndex]) {
-      const stepDuration = recipe.steps[currentStepIndex].duration_seconds || 0;
-      setTimerLeft(stepDuration);
+      const step = recipe.steps[currentStepIndex];
+      
+      // Update timer for the new step
+      setTimerLeft(step.duration_seconds || 0);
       setIsTimerRunning(false);
+
+      // Delayed audio narration
+      const timer = setTimeout(() => {
+        playStepAudio(`Step ${currentStepIndex + 1}: ${step.instruction}`);
+      }, 600);
+      return () => clearTimeout(timer);
     }
   }, [currentStepIndex, isCooking, recipe]);
 
@@ -251,12 +238,25 @@ export default function RecipePage() {
   };
 
   const playStepAudio = async (text, onEndedCallback) => {
+    // Stop any existing audio immediately
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current = null;
+    }
+
+    if (isProcessingCommandRef.current && !text.includes('Step')) {
+      addLog("Audio blocked: already processing");
+      return;
+    }
+
+    isSpeakingRef.current = true;
     try {
       const BASE_URL = 'http://localhost:3001/api';
       addLog(`Requesting TTS...`);
       const response = await fetch(`${BASE_URL}/tts/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ text })
       });
 
@@ -264,20 +264,38 @@ export default function RecipePage() {
 
       const audioBlob = await response.blob();
       const audioUrl = URL.createObjectURL(audioBlob);
-      stopAllAudio();
-      const newAudio = new Audio(audioUrl);
-      if (onEndedCallback) newAudio.onended = onEndedCallback;
-      setStepAudio(newAudio);
-      await newAudio.play();
+      const audio = new Audio(audioUrl);
+      currentAudioRef.current = audio;
+      
+      audio.onended = () => {
+        isSpeakingRef.current = false;
+        if (onEndedCallback) onEndedCallback();
+      };
+      audio.onerror = () => {
+        isSpeakingRef.current = false;
+        if (onEndedCallback) onEndedCallback();
+      };
+
+      await audio.play();
       addLog('ElevenLabs Playing');
     } catch (err) {
       addLog(`TTS Failed, using Browser`);
-      stopAllAudio();
       if (typeof window !== 'undefined' && window.speechSynthesis) {
         const utterance = new SpeechSynthesisUtterance(text);
-        if (onEndedCallback) utterance.onend = onEndedCallback;
+        utterance.onstart = () => { isSpeakingRef.current = true; };
+        utterance.onend = () => { 
+          isSpeakingRef.current = false;
+          if (onEndedCallback) onEndedCallback();
+        };
+        utterance.onerror = () => {
+          isSpeakingRef.current = false;
+          if (onEndedCallback) onEndedCallback();
+        };
         window.speechSynthesis.speak(utterance);
-      } else if (onEndedCallback) onEndedCallback();
+      } else {
+        isSpeakingRef.current = false;
+        if (onEndedCallback) onEndedCallback();
+      }
     }
   };
 
@@ -296,7 +314,8 @@ export default function RecipePage() {
       const response = await fetch(`${BASE_URL}/assistant/command`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ commandText, recipeData: recipe, currentStepIndex: stepIndex })
+        credentials: 'include',
+        body: JSON.stringify({ commandText, recipeData: recipeRef.current, currentStepIndex: stepIndex })
       });
 
       if (!response.ok) throw new Error(`Assistant Error: ${response.status}`);
@@ -308,7 +327,7 @@ export default function RecipePage() {
       // Perform navigation IMMEDIATELY, don't wait for audio
       if (data.action === 'NEXT_STEP') {
         setCurrentStepIndex(prev => {
-          const next = Math.min(prev + 1, recipe.steps.length - 1);
+          const next = Math.min(prev + 1, recipeRef.current.steps.length - 1);
           currentStepIndexRef.current = next;
           return next;
         });
@@ -325,12 +344,7 @@ export default function RecipePage() {
         clearTimeout(safetyTimer);
         setIsProcessingCommand(false);
       });
-<<<<<<< HEAD
-=======
 
-      // Safety unlock if audio fails or is silent
-      setTimeout(() => setIsProcessingCommand(false), 3000);
->>>>>>> 2864eb83eb8821adc06eb0ba6fcd270fc2f98bd2
 
     } catch (error) {
       clearTimeout(safetyTimer);
@@ -375,7 +389,29 @@ export default function RecipePage() {
     stopAllAudio();
   };
 
-  if (loading) {
+  const handleDelete = async () => {
+    try {
+      const response = await fetch(`http://localhost:3001/api/recipes/${id}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      if (response.ok) {
+        router.push('/');
+      } else {
+        console.error('Failed to delete recipe from server');
+        // Fallback for safety
+        deleteLocalRecipe(id);
+        router.push('/');
+      }
+    } catch (err) {
+      console.error('Error deleting recipe:', err);
+      deleteLocalRecipe(id);
+      router.push('/');
+    }
+  };
+
+
+  if (!mounted || loading) {
     return (
       <div className="container mx-auto px-4 py-8 flex justify-center items-center h-[60vh]">
         <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-accent-color"></div>
@@ -397,11 +433,7 @@ export default function RecipePage() {
     const progress = ((currentStepIndex + 1) / recipe.steps.length) * 100;
 
     return (
-<<<<<<< HEAD
-      <div className="fixed inset-0 z-50 flex flex-col animate-in fade-in duration-500 overflow-hidden" style={{ backgroundColor: 'var(--bg-color)' }}>
-=======
-      <div className="fixed inset-0 z-50 bg-page flex flex-col animate-in fade-in duration-500 overflow-hidden">
->>>>>>> 2864eb83eb8821adc06eb0ba6fcd270fc2f98bd2
+      <div className="fixed inset-0 z-50 flex flex-col animate-in fade-in duration-500 overflow-y-auto" style={{ backgroundColor: 'var(--bg-color)' }}>
         {/* Diagnostic Overlay (Bottom Left) */}
         <div className="fixed bottom-4 left-4 z-[60] bg-ink/90 text-[10px] text-page p-3 rounded-lg font-mono pointer-events-none opacity-50 hover:opacity-100 transition-opacity">
           <div className="font-bold mb-1 border-b border-page/20 pb-1">SYSTEM DIAGNOSTICS</div>
@@ -412,13 +444,8 @@ export default function RecipePage() {
             {debugLog.map((log, i) => <div key={i}>• {log}</div>)}
           </div>
         </div>
-<<<<<<< HEAD
         <div className="p-4 border-b border-border-color flex items-center justify-between glass">
           <button onClick={handleExitCooking} className="flex items-center gap-2 text-text-secondary hover:text-accent-color transition-colors font-semibold">
-=======
-        <div className="p-4 border-b border-parchment-deep flex items-center justify-between glass">
-          <button onClick={handleExitCooking} className="flex items-center gap-2 text-warm-dark hover:text-brick transition-colors font-semibold">
->>>>>>> 2864eb83eb8821adc06eb0ba6fcd270fc2f98bd2
             <ArrowLeft size={20} />
             <span>Exit</span>
           </button>
@@ -434,7 +461,7 @@ export default function RecipePage() {
         </div>
 
         {/* Main Cooking View */}
-        <div className="flex-grow flex flex-col items-center justify-center p-6 sm:p-12 max-w-5xl mx-auto w-full relative">
+        <div className="flex-grow flex flex-col items-center justify-center p-6 sm:p-12 max-w-5xl mx-auto w-full relative min-h-fit">
           <div className={`absolute top-8 right-8 ${isAssistantEnabled ? 'animate-pulse text-accent-color' : 'text-text-muted opacity-30'} hidden sm:flex items-center gap-2 transition-all`}>
             <ChefHat size={20} />
             <span className="text-sm font-bold uppercase">{isAssistantEnabled ? 'Hands-free active' : 'Voice assistant off'}</span>
@@ -520,7 +547,7 @@ export default function RecipePage() {
   /* Standard Recipe Detail View */
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl animate-in fade-in duration-700">
-      <Link href="/" className="inline-flex items-center gap-2 text-text-secondary/60 hover:text-accent-color transition-colors mb-8 font-semibold">
+      <Link href="/" className="inline-flex items-center gap-2 text-text-secondary hover:text-accent-color transition-colors mb-8 font-semibold opacity-60 hover:opacity-100">
         <ArrowLeft size={20} />
         <span>Back to Dashboard</span>
       </Link>
@@ -529,7 +556,15 @@ export default function RecipePage() {
         {/* Left Column: Image & Primary Action */}
         <div className="lg:col-span-5 space-y-6">
           <div className="rounded-[2.5rem] overflow-hidden shadow-2xl aspect-[3/4] relative border-4 border-border-color">
-            <img src={recipe.image_url} alt={recipe.title} className="w-full h-full object-cover" />
+            <img 
+              src={recipe.image_url || 'https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&w=800&q=80'} 
+              alt={recipe.title} 
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = 'https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&w=800&q=80';
+              }}
+              className="w-full h-full object-cover" 
+            />
             <div className="absolute inset-0 bg-gradient-to-t from-ink/80 via-transparent to-transparent" />
             <div className="absolute bottom-6 left-6 right-6">
               <div className="flex gap-2 flex-wrap">
@@ -542,32 +577,45 @@ export default function RecipePage() {
             </div>
           </div>
 
-          <button
-            onClick={handleStartCooking}
-            className="w-full py-5 bg-accent-color hover:opacity-80 text-page rounded-3xl font-bold text-xl flex items-center justify-center gap-3 transition-all shadow-xl shadow-accent-color/20 hover:-translate-y-1 active:translate-y-0"
-          >
-            <Play size={24} fill="currentColor" />
-            Start Cooking Mode
-          </button>
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={handleStartCooking}
+              className="w-full py-5 bg-accent-color hover:opacity-80 text-page rounded-3xl font-bold text-xl flex items-center justify-center gap-3 transition-all shadow-xl shadow-accent-color/20 hover:-translate-y-1 active:translate-y-0"
+            >
+              <Play size={24} fill="currentColor" />
+              Start Cooking Mode
+            </button>
+            
+            {/* Remove Item Button */}
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="w-full py-4 border-2 border-red-500/20 hover:border-red-500/50 text-red-500/60 hover:text-red-500 rounded-3xl font-bold flex items-center justify-center gap-3 transition-all hover:bg-red-500/5 active:scale-[0.98]"
+            >
+              <Trash2 size={20} />
+              Remove Recipe
+            </button>
+          </div>
+
+
         </div>
 
         {/* Right Column: Info & Ingredients */}
         <div className="lg:col-span-7">
           <h1 className="text-5xl font-bold mb-4 text-text-primary tracking-tight leading-tight">{recipe.title}</h1>
-          <p className="text-xl text-text-secondary/70 mb-10 leading-relaxed font-medium">{recipe.description}</p>
+          <p className="text-xl text-text-secondary mb-10 leading-relaxed font-medium opacity-75">{recipe.description}</p>
 
           <div className="flex flex-wrap gap-8 p-8 bg-surface-color border border-border-color rounded-[2rem] mb-10">
             <div className="flex items-center gap-4">
               <div className="p-4 bg-accent-color/10 text-accent-color rounded-2xl"><Clock size={24} /></div>
               <div>
-                <p className="text-xs text-text-secondary/50 uppercase font-bold tracking-widest">Total Time</p>
+                <p className="text-xs text-text-secondary uppercase font-bold tracking-widest opacity-50">Total Time</p>
                 <p className="text-lg font-bold text-text-primary">{recipe.prep_time + recipe.cook_time} mins</p>
               </div>
             </div>
             <div className="flex items-center gap-4">
               <div className="p-4 bg-aged-gold/10 text-aged-gold rounded-2xl"><Users size={24} /></div>
               <div>
-                <p className="text-xs text-text-secondary/50 uppercase font-bold tracking-widest">Servings</p>
+                <p className="text-xs text-text-secondary uppercase font-bold tracking-widest opacity-50">Servings</p>
                 <p className="text-lg font-bold text-text-primary">{recipe.servings * servingsMultiplier}</p>
               </div>
             </div>
@@ -581,7 +629,7 @@ export default function RecipePage() {
                   <button
                     key={m}
                     onClick={() => { setServingsMultiplier(m); setIsCustomMultiplier(false); }}
-                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${servingsMultiplier === m && !isCustomMultiplier ? 'bg-text-primary text-bg-color shadow-md' : 'text-text-secondary hover:bg-border-color'}`}
+                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${servingsMultiplier === m && !isCustomMultiplier ? 'bg-text-primary text-page shadow-md' : 'text-text-secondary hover:bg-border-color'}`}
                   >
                     {m}x
                   </button>
@@ -607,10 +655,15 @@ export default function RecipePage() {
               {recipe.steps.map((step, idx) => (
                 <div key={step.id} className="flex gap-6 group">
                   <div className="flex flex-col items-center">
-                    <div className="w-10 h-10 rounded-full bg-text-primary text-bg-color flex items-center justify-center font-bold text-lg shrink-0 shadow-md group-hover:bg-accent-color group-hover:text-page transition-colors">
+                    <div
+                      className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg shrink-0 shadow-md group-hover:bg-accent-color transition-colors"
+                      style={{ backgroundColor: 'var(--text-primary)', color: 'var(--bg-color)' }}
+                    >
                       {idx + 1}
                     </div>
-                    {idx < recipe.steps.length - 1 && <div className="w-0.5 h-full bg-border-color my-2" />}
+                    {idx < recipe.steps.length - 1 && (
+                      <div className="w-0.5 flex-1 min-h-8 bg-border-color mt-2" />
+                    )}
                   </div>
                   <div className="pb-8 pt-1">
                     <p className="text-xl text-text-primary leading-relaxed font-medium">{step.instruction}</p>
@@ -627,6 +680,34 @@ export default function RecipePage() {
           </div>
         </div>
       </div>
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-ink/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-surface-color border-2 border-border-color rounded-[2.5rem] p-8 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-2xl flex items-center justify-center mb-6 mx-auto">
+              <AlertCircle size={32} />
+            </div>
+            <h3 className="text-2xl font-bold text-text-primary text-center mb-3">Delete Recipe?</h3>
+            <p className="text-text-secondary text-center mb-8 leading-relaxed">
+              This will permanently remove <span className="font-bold text-text-primary">"{recipe.title}"</span> from your collection. This action cannot be undone.
+            </p>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={handleDelete}
+                className="w-full py-4 bg-red-500 hover:bg-red-600 text-white rounded-2xl font-bold transition-all shadow-lg shadow-red-500/20"
+              >
+                Delete Forever
+              </button>
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="w-full py-4 bg-transparent hover:bg-border-color text-text-secondary rounded-2xl font-bold transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

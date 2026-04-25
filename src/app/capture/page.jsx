@@ -33,7 +33,7 @@ export default function CapturePage() {
       const newRecipe = response.data.data;
       if (!newRecipe.id) newRecipe.id = Date.now().toString(); // Assign ID if missing
 
-      saveLocalRecipe(newRecipe);
+
       setSuccess(true);
 
       setTimeout(() => {
@@ -41,40 +41,7 @@ export default function CapturePage() {
       }, 1500);
     } catch (err) {
       console.error('URL Extraction Error:', err);
-
-      // Fallback for Demo/Hackathon if backend is not running
-      if (err.message === 'Network Error' || err.code === 'ERR_NETWORK') {
-        const fakeId = Date.now().toString();
-        saveLocalRecipe({
-          id: fakeId,
-          title: 'Mock Website Recipe (Backend Down)',
-          description: 'This was extracted from a website URL, but your backend is offline, so this is a placeholder.',
-          source_type: 'url',
-          source_url: url,
-          servings: 4,
-          cook_time: 20,
-          prep_time: 15,
-          difficulty: 'Medium',
-          tags: ['URL', 'Mock'],
-          image_url: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80',
-          ingredients: [
-            { id: 'i1', name: 'Flour', quantity: '2', unit: 'cups', dietary_flags: ['contains-gluten'] },
-            { id: 'i2', name: 'Sugar', quantity: '1', unit: 'cup', dietary_flags: [] },
-          ],
-          steps: [
-            { id: 's1', step_number: 1, instruction: 'Mix flour and sugar in a large bowl.', duration_seconds: 60 },
-            { id: 's2', step_number: 2, instruction: 'Bake at 350F for 20 minutes.', duration_seconds: 1200 },
-          ]
-        });
-
-        setSuccess(true);
-        setTimeout(() => {
-          router.push(`/recipe/${fakeId}`);
-        }, 1500);
-        return;
-      }
-
-      setError(err.response?.data?.message || 'Failed to extract recipe from URL');
+      setError(err.response?.data?.message || err.message || 'Failed to extract recipe from URL');
       setIsProcessing(false);
     }
   };
@@ -103,7 +70,7 @@ export default function CapturePage() {
       const newRecipe = response.data.data;
       if (!newRecipe.id) newRecipe.id = Date.now().toString(); // Assign ID if missing
 
-      saveLocalRecipe(newRecipe);
+
       setSuccess(true);
 
       setTimeout(() => {
@@ -111,40 +78,7 @@ export default function CapturePage() {
       }, 1500);
     } catch (err) {
       console.error('File Upload Error:', err);
-
-      // Fallback for Demo/Hackathon if backend is not running
-      if (err.message === 'Network Error' || err.code === 'ERR_NETWORK') {
-        const fakeId = Date.now().toString();
-        saveLocalRecipe({
-          id: fakeId,
-          title: 'Mock Photo Recipe (Backend Down)',
-          description: 'This was extracted from your photo upload, but your backend is offline, so this is a placeholder.',
-          source_type: 'photo',
-          servings: 2,
-          cook_time: 10,
-          prep_time: 5,
-          difficulty: 'Easy',
-          tags: ['Photo', 'Mock'],
-          image_url: 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=800&q=80',
-          ingredients: [
-            { id: 'i1', name: 'Eggs', quantity: '2', unit: 'whole', dietary_flags: [] },
-            { id: 'i2', name: 'Milk', quantity: '0.25', unit: 'cup', dietary_flags: ['contains-dairy'] },
-          ],
-          steps: [
-            { id: 's1', step_number: 1, instruction: 'Whisk eggs and milk together.', duration_seconds: 60 },
-            { id: 's2', step_number: 2, instruction: 'Scramble in a pan over medium heat.', duration_seconds: 180 },
-          ]
-        });
-
-        console.log('Backend unreachable, using mock success for demo.');
-        setSuccess(true);
-        setTimeout(() => {
-          router.push(`/recipe/${fakeId}`); // Redirect to new mock recipe
-        }, 1500);
-        return;
-      }
-
-      setError(err.response?.data?.message || 'Failed to process image');
+      setError(err.response?.data?.message || err.message || 'Failed to process image');
       setIsProcessing(false);
     }
   };
