@@ -34,3 +34,21 @@ coverage/
 
 # Cache
 .cache/
+
+# Next.js build output
+.next/
+out/
+
+# Build manifests
+build-manifest.json
+fallback-build-manifest.json
+
+# Dependency directories
+node_modules/
+
+# IDE files
+.vscode/
+.cursor/
+
+# OS files
+.DS_Store
