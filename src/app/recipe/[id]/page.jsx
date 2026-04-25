@@ -3,8 +3,36 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { fetchRecipeById } from '../../../data/mockRecipes';
-import { Clock, Users, Play, ShoppingCart, ArrowLeft, Mic, ChevronRight, ChevronLeft, Check, ChefHat } from 'lucide-react';
+import { Clock, Users, Play, ShoppingCart, ArrowLeft, Mic, ChevronRight, ChevronLeft, Check, ChefHat, Minimize2 } from 'lucide-react';
 import Link from 'next/link';
+
+const playChime = () => {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    
+    osc.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(523.25, ctx.currentTime);
+    osc.frequency.setValueAtTime(659.25, ctx.currentTime + 0.15);
+    osc.frequency.setValueAtTime(783.99, ctx.currentTime + 0.3);
+    osc.frequency.setValueAtTime(1046.50, ctx.currentTime + 0.45);
+    
+    gainNode.gain.setValueAtTime(0, ctx.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.05);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.5);
+    
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 1.5);
+  } catch (e) {
+    console.error("Audio playback failed", e);
+  }
+};
 
 export default function RecipePage() {
   const { id } = useParams();
@@ -18,6 +46,9 @@ export default function RecipePage() {
   const [servingsMultiplier, setServingsMultiplier] = useState(1);
   const [customMultiplierInput, setCustomMultiplierInput] = useState('');
   const [isCustomMultiplier, setIsCustomMultiplier] = useState(false);
+  const [timerLeft, setTimerLeft] = useState(0);
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [isTimerMinimized, setIsTimerMinimized] = useState(false);
 
   useEffect(() => {
     // TODO: BACKEND INTEGRATION
@@ -50,6 +81,28 @@ export default function RecipePage() {
       // playAudio(response.data.audioUrl)
     }, 2000);
   };
+
+  useEffect(() => {
+    if (isCooking && recipe && recipe.steps[currentStepIndex]) {
+      const stepDuration = recipe.steps[currentStepIndex].duration_seconds || 0;
+      setTimerLeft(stepDuration);
+      setIsTimerRunning(stepDuration > 0);
+      setIsTimerMinimized(false);
+    }
+  }, [currentStepIndex, isCooking, recipe]);
+
+  useEffect(() => {
+    let interval;
+    if (isTimerRunning && timerLeft > 0) {
+      interval = setInterval(() => {
+        setTimerLeft((prev) => prev - 1);
+      }, 1000);
+    } else if (timerLeft === 0 && isTimerRunning) {
+      setIsTimerRunning(false);
+      playChime();
+    }
+    return () => clearInterval(interval);
+  }, [isTimerRunning, timerLeft]);
 
   if (loading) {
     return (
@@ -98,9 +151,74 @@ export default function RecipePage() {
           </h2>
 
           {currentStep.duration_seconds > 0 && (
-            <div className="px-8 py-4 bg-gray-100 dark:bg-gray-800 rounded-full font-mono text-3xl mb-12 text-gray-800 dark:text-gray-200">
-              {Math.floor(currentStep.duration_seconds / 60)}:{(currentStep.duration_seconds % 60).toString().padStart(2, '0')}
+            isTimerMinimized ? (
+              <button 
+                onClick={() => setIsTimerMinimized(false)}
+                className={`fixed bottom-28 right-6 sm:bottom-32 sm:right-12 z-50 px-6 py-4 rounded-full shadow-2xl flex items-center gap-3 font-mono font-bold text-3xl transition-all hover:scale-105 ${timerLeft === 0 ? 'bg-green-500 text-white shadow-green-500/40 animate-pulse' : 'bg-gray-900 text-white dark:bg-white dark:text-gray-900 shadow-black/20'}`}
+              >
+                <Clock size={28} className={isTimerRunning && timerLeft > 0 ? "animate-pulse" : ""} />
+                {Math.floor(timerLeft / 60)}:{(timerLeft % 60).toString().padStart(2, '0')}
+              </button>
+            ) : (
+              <div className="flex flex-col items-center gap-6 mb-12 relative w-full max-w-lg">
+                <button 
+                  onClick={() => setIsTimerMinimized(true)}
+                  className="absolute -top-6 right-4 sm:-right-4 p-3 text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-full shadow-sm"
+                  title="Minimize Timer"
+                >
+                  <Minimize2 size={20} />
+                </button>
+                <div className={`px-12 py-6 bg-gray-100 dark:bg-gray-800 rounded-full font-mono text-5xl sm:text-6xl text-gray-800 dark:text-gray-200 shadow-inner transition-colors ${timerLeft === 0 ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' : ''}`}>
+                  {Math.floor(timerLeft / 60)}:{(timerLeft % 60).toString().padStart(2, '0')}
+                </div>
+              
+              <div className="flex flex-wrap justify-center gap-3">
+                {timerLeft > 0 ? (
+                  <>
+                    <button 
+                      onClick={() => setIsTimerRunning(!isTimerRunning)}
+                      className={`px-8 py-3 rounded-full font-bold text-white transition-all text-lg shadow-md hover:-translate-y-0.5 ${isTimerRunning ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-500/30' : 'bg-green-500 hover:bg-green-600 shadow-green-500/30'}`}
+                    >
+                      {isTimerRunning ? 'Pause Timer' : 'Start Timer'}
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setTimerLeft(currentStep.duration_seconds);
+                        setIsTimerRunning(false);
+                      }}
+                      className="px-6 py-3 rounded-full font-bold bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-all text-lg"
+                    >
+                      Reset
+                    </button>
+                  </>
+                ) : (
+                  <button 
+                    onClick={() => {
+                      setTimerLeft(currentStep.duration_seconds);
+                      setIsTimerRunning(false);
+                    }}
+                    className="px-8 py-3 rounded-full font-bold bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-all text-lg"
+                  >
+                    Timer Done! (Restart)
+                  </button>
+                )}
+                
+                {timerLeft > 0 && (
+                  <button 
+                    onClick={() => {
+                      setTimerLeft(0);
+                      setIsTimerRunning(false);
+                      if (currentStepIndex === recipe.steps.length - 1) setIsCooking(false);
+                      else setCurrentStepIndex(p => p + 1);
+                    }}
+                    className="px-6 py-3 rounded-full font-bold bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 transition-all text-lg border border-red-200 dark:border-red-800/50"
+                  >
+                    Skip Step
+                  </button>
+                )}
+              </div>
             </div>
+            )
           )}
 
           {/* Voice Q&A Simulation */}
