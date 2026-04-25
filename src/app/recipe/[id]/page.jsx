@@ -64,26 +64,26 @@ export default function RecipePage() {
   useEffect(() => {
     if (mounted) {
       const checkStatus = async () => {
-        const s = { 
+        const s = {
           speech: (window.SpeechRecognition || window.webkitSpeechRecognition) ? 'Supported' : 'NOT Supported',
           mic: 'Unknown',
           backend: 'checking...'
         };
-        
+
         try {
           const res = await fetch('http://localhost:3001/api/health');
           s.backend = res.ok ? 'Connected' : `Error: ${res.status}`;
         } catch (e) {
           s.backend = 'Disconnected';
         }
-        
+
         try {
           const permission = await navigator.permissions.query({ name: 'microphone' });
           s.mic = permission.state;
         } catch (e) {
           s.mic = 'Unknown';
         }
-        
+
         setDiag(s);
       };
       checkStatus();
@@ -137,21 +137,21 @@ export default function RecipePage() {
           setIsListening(false);
           // Auto-restart if we aren't currently "Thinking..."
           if (isCooking && isAssistantEnabled && !isProcessingCommand) {
-            try { recognition.start(); } catch(e) {}
+            try { recognition.start(); } catch (e) { }
           }
         };
         setSpeechRecognition(recognition);
       }
     }
     return () => {
-      if (recognition) try { recognition.stop(); } catch(e) {}
+      if (recognition) try { recognition.stop(); } catch (e) { }
     };
   }, [isCooking, isAssistantEnabled, mounted]); // Removed isProcessingCommand to prevent internal restart loops
 
   // Explicit effect to restart recognition when processing ends
   useEffect(() => {
     if (isCooking && isAssistantEnabled && !isProcessingCommand && speechRecognition && !isListening) {
-      try { speechRecognition.start(); } catch(e) {}
+      try { speechRecognition.start(); } catch (e) { }
     }
   }, [isProcessingCommand, isCooking, isAssistantEnabled, speechRecognition, isListening]);
 
@@ -201,7 +201,7 @@ export default function RecipePage() {
       });
 
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      
+
       const audioBlob = await response.blob();
       const audioUrl = URL.createObjectURL(audioBlob);
       stopAllAudio();
@@ -232,9 +232,9 @@ export default function RecipePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ commandText, recipeData: recipe, currentStepIndex })
       });
-      
+
       if (!response.ok) throw new Error(`Assistant Error: ${response.status}`);
-      
+
       const data = await response.json();
       addLog(`Action: ${data.action}`);
       setVoiceResponse(data.replyText);
@@ -250,7 +250,7 @@ export default function RecipePage() {
       playStepAudio(data.replyText, () => {
         setIsProcessingCommand(false);
       });
-      
+
       // Safety unlock if audio fails or is silent
       setTimeout(() => setIsProcessingCommand(false), 3000);
 
@@ -268,7 +268,7 @@ export default function RecipePage() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stream.getTracks().forEach(track => track.stop());
-    } catch (err) {}
+    } catch (err) { }
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     if (AudioContext) {
       const ctx = new AudioContext();
@@ -281,7 +281,7 @@ export default function RecipePage() {
     const newState = !isAssistantEnabled;
     setIsAssistantEnabled(newState);
     if (!newState) {
-      if (speechRecognition) try { speechRecognition.stop(); } catch(e) {}
+      if (speechRecognition) try { speechRecognition.stop(); } catch (e) { }
       stopAllAudio();
       setVoiceResponse('');
     } else {
@@ -304,7 +304,6 @@ export default function RecipePage() {
     );
   }
 
-<<<<<<< HEAD
   if (!recipe) {
     return (
       <div className="container mx-auto px-4 py-8 text-center">
@@ -313,16 +312,12 @@ export default function RecipePage() {
       </div>
     );
   }
-=======
-  if (!recipe) return <div className="container mx-auto px-4 py-8 text-center text-xl text-text-primary">Recipe not found.</div>;
->>>>>>> ef011094c43d37786beb8feb7d585615ce218375
 
   if (isCooking) {
     const currentStep = recipe.steps[currentStepIndex];
     const progress = ((currentStepIndex + 1) / recipe.steps.length) * 100;
 
     return (
-<<<<<<< HEAD
       <div className="fixed inset-0 z-50 bg-page flex flex-col animate-in fade-in duration-500 overflow-hidden">
         {/* Diagnostic Overlay (Bottom Left) */}
         <div className="fixed bottom-4 left-4 z-[60] bg-ink/90 text-[10px] text-page p-3 rounded-lg font-mono pointer-events-none opacity-50 hover:opacity-100 transition-opacity">
@@ -336,12 +331,6 @@ export default function RecipePage() {
         </div>
         <div className="p-4 border-b border-parchment-deep flex items-center justify-between glass">
           <button onClick={handleExitCooking} className="flex items-center gap-2 text-warm-dark hover:text-brick transition-colors font-semibold">
-=======
-      <div className="fixed inset-0 z-50 bg-page flex flex-col animate-in fade-in duration-500">
-        {/* Cooking Header */}
-        <div className="p-4 border-b border-border-color flex items-center justify-between glass">
-          <button onClick={() => setIsCooking(false)} className="flex items-center gap-2 text-text-secondary hover:text-accent-color transition-colors font-semibold">
->>>>>>> ef011094c43d37786beb8feb7d585615ce218375
             <ArrowLeft size={20} />
             <span>Exit</span>
           </button>
@@ -368,7 +357,6 @@ export default function RecipePage() {
           </h2>
 
           {currentStep.duration_seconds > 0 && (
-<<<<<<< HEAD
             <div className="flex flex-col items-center gap-6 mb-12">
               <div className="px-12 py-6 bg-surface-color border-4 border-parchment-deep rounded-[2rem] font-mono text-6xl text-ink shadow-inner flex items-center justify-center min-w-[280px]">
                 {Math.floor(timerLeft / 60)}:{(timerLeft % 60).toString().padStart(2, '0')}
@@ -389,30 +377,17 @@ export default function RecipePage() {
                   </>
                 )}
               </button>
-=======
-            <div className="px-8 py-4 bg-surface-color dark:bg-bg-color rounded-full font-mono text-3xl mb-12 text-text-primary border border-border-color">
-              {Math.floor(currentStep.duration_seconds / 60)}:{(currentStep.duration_seconds % 60).toString().padStart(2, '0')}
->>>>>>> ef011094c43d37786beb8feb7d585615ce218375
             </div>
           )}
 
           {/* Voice Q&A Section */}
           <div className="w-full max-w-md">
             <button
-<<<<<<< HEAD
               onClick={handleToggleAssistant}
               className={`w-full py-5 rounded-3xl flex flex-col items-center justify-center gap-3 transition-all duration-300 shadow-xl ${isAssistantEnabled ? 'bg-brick text-page ring-4 ring-brick/20' : 'bg-surface-color border-2 border-parchment-deep text-ink hover:border-brick'}`}
             >
               <div className={`p-4 rounded-full ${isAssistantEnabled ? 'bg-page text-brick animate-bounce' : 'bg-parchment text-brick'}`}>
                 {isAssistantEnabled ? <Mic size={28} /> : <Mic size={28} className="opacity-50" />}
-=======
-              onClick={handleAskQuestion}
-              disabled={isListening}
-              className={`w-full py-5 rounded-3xl flex flex-col items-center justify-center gap-3 transition-all duration-300 shadow-xl ${isListening ? 'bg-accent-color text-page ring-4 ring-accent-color/20' : 'bg-surface-color border-2 border-border-color text-text-primary hover:border-accent-color'}`}
-            >
-              <div className={`p-4 rounded-full ${isListening ? 'bg-page text-accent-color animate-bounce' : 'bg-parchment text-accent-color dark:bg-surface-color'}`}>
-                <Mic size={28} />
->>>>>>> ef011094c43d37786beb8feb7d585615ce218375
               </div>
               <span className="font-bold text-lg">{isAssistantEnabled ? 'Listening (Say "Hey Chef")' : 'Enable Hands-free'}</span>
             </button>
