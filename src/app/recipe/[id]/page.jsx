@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import axios from 'axios';
 import { fetchRecipeById } from '../../../data/mockRecipes';
 import { Clock, Users, Play, ShoppingCart, ArrowLeft, Mic, ChevronRight, ChevronLeft, Check, ChefHat, Minimize2 } from 'lucide-react';
 import Link from 'next/link';
@@ -48,6 +49,36 @@ export default function RecipePage() {
   const [timerLeft, setTimerLeft] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [isTimerMinimized, setIsTimerMinimized] = useState(false);
+  const [stepAudio, setStepAudio] = useState(null);
+
+  const playStepAudio = async (text) => {
+    try {
+      const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/tts/generate`, 
+        { text }, 
+        { responseType: 'blob' }
+      );
+      
+      const audioBlob = response.data;
+      const audioUrl = URL.createObjectURL(audioBlob);
+      
+      if (stepAudio) {
+        stepAudio.pause();
+      }
+      
+      const newAudio = new Audio(audioUrl);
+      setStepAudio(newAudio);
+      newAudio.play();
+    } catch (err) {
+      console.error('Failed to generate or play step audio:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (isCooking && recipe && recipe.steps[currentStepIndex]) {
+      const instruction = recipe.steps[currentStepIndex].instruction;
+      playStepAudio(instruction);
+    }
+  }, [currentStepIndex, isCooking, recipe]);
 
   useEffect(() => {
     const load = async () => {
