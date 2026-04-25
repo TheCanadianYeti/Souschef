@@ -34,8 +34,8 @@ const generateSpeech = async (text) => {
     }
 
     try {
-        // Rachel voice ID (common default) or define another
-        const voiceId = "21m00Tcm4TlvDq8ikWAM"; 
+        // Requested voice ID
+        const voiceId = "wWWn96OtTHu1sn8SRGEr"; 
 
         const audioStream = await api.textToSpeech.convert(voiceId, {
             text: text,
