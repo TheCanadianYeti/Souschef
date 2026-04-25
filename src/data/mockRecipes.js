@@ -52,15 +52,32 @@ export const mockRecipes = [
   }
 ];
 
+export const getLocalRecipes = () => {
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem('custom_recipes');
+    if (saved) return JSON.parse(saved);
+  }
+  return [];
+};
+
+export const saveLocalRecipe = (recipe) => {
+  if (typeof window !== 'undefined') {
+    const saved = getLocalRecipes();
+    saved.push(recipe);
+    localStorage.setItem('custom_recipes', JSON.stringify(saved));
+  }
+};
+
 // TODO: BACKEND INTEGRATION - Replace these mock functions with actual Axios/fetch calls to Node.js backend.
 export const fetchRecipes = async () => {
-  return new Promise((resolve) => setTimeout(() => resolve(mockRecipes), 800));
+  return new Promise((resolve) => setTimeout(() => resolve([...mockRecipes, ...getLocalRecipes()]), 800));
 };
 
 export const fetchRecipeById = async (id) => {
   return new Promise((resolve) => {
     setTimeout(() => {
-      const recipe = mockRecipes.find(r => r.id === id);
+      const allRecipes = [...mockRecipes, ...getLocalRecipes()];
+      const recipe = allRecipes.find(r => String(r.id) === String(id));
       resolve(recipe);
     }, 500);
   });
