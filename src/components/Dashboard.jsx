@@ -10,7 +10,7 @@ export default function Dashboard() {
   const [recipes, setRecipes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTag, setSelectedTag] = useState(null);
+  const [selectedTags, setSelectedTags] = useState([]);
 
   useEffect(() => {
     const loadRecipes = async () => {
@@ -29,10 +29,23 @@ export default function Dashboard() {
   const filteredRecipes = recipes.filter(recipe => {
     const matchesSearch = recipe.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       recipe.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      recipe.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesTag = selectedTag ? recipe.tags.includes(selectedTag) : true;
-    return matchesSearch && matchesTag;
+      (recipe.tags && recipe.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())));
+    
+    // Multi-tag filtering: recipe must match ALL selected tags (AND logic)
+    const matchesTags = selectedTags.length > 0 
+      ? selectedTags.every(tag => recipe.tags && recipe.tags.includes(tag)) 
+      : true;
+      
+    return matchesSearch && matchesTags;
   });
+
+  const toggleTag = (tag) => {
+    setSelectedTags(prev => 
+      prev.includes(tag) 
+        ? prev.filter(t => t !== tag) 
+        : [...prev, tag]
+    );
+  };
 
   const allTags = Array.from(new Set(recipes.flatMap(r => r.tags)));
 
@@ -68,11 +81,12 @@ export default function Dashboard() {
 
       {/* Filter Tags */}
       {!loading && allTags.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-10">
+        <div className="overflow-x-auto mb-10 pb-4 custom-scrollbar">
+          <div className="grid grid-rows-2 grid-flow-col gap-2 min-w-max">
           <button
-            onClick={() => setSelectedTag(null)}
+            onClick={() => setSelectedTags([])}
             className={`px-5 py-1.5 rounded-full text-sm font-bold transition-all border ${
-              !selectedTag
+              selectedTags.length === 0
                 ? 'bg-text-primary text-page border-text-primary'
                 : 'bg-surface-color border-border-color text-text-secondary hover:border-accent-color'
             }`}
@@ -82,9 +96,9 @@ export default function Dashboard() {
           {allTags.map(tag => (
             <button
               key={tag}
-              onClick={() => setSelectedTag(tag === selectedTag ? null : tag)}
+              onClick={() => toggleTag(tag)}
               className={`px-5 py-1.5 rounded-full text-sm font-bold transition-all border ${
-                selectedTag === tag
+                selectedTags.includes(tag)
                   ? 'bg-accent-color text-page border-accent-color shadow-sm'
                   : 'bg-surface-color border-border-color text-text-secondary hover:border-accent-color'
               }`}
@@ -93,6 +107,7 @@ export default function Dashboard() {
             </button>
           ))}
         </div>
+      </div>
       )}
 
       {/* Grid Area */}
