@@ -13,20 +13,20 @@ const playChime = () => {
     const ctx = new AudioContext();
     const osc = ctx.createOscillator();
     const gainNode = ctx.createGain();
-    
+
     osc.connect(gainNode);
     gainNode.connect(ctx.destination);
-    
+
     osc.type = 'sine';
     osc.frequency.setValueAtTime(523.25, ctx.currentTime);
     osc.frequency.setValueAtTime(659.25, ctx.currentTime + 0.15);
     osc.frequency.setValueAtTime(783.99, ctx.currentTime + 0.3);
     osc.frequency.setValueAtTime(1046.50, ctx.currentTime + 0.45);
-    
+
     gainNode.gain.setValueAtTime(0, ctx.currentTime);
     gainNode.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.05);
     gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.5);
-    
+
     osc.start(ctx.currentTime);
     osc.stop(ctx.currentTime + 1.5);
   } catch (e) {
@@ -142,12 +142,11 @@ export default function RecipePage() {
             <div className="px-8 py-4 bg-gray-100 dark:bg-gray-800 rounded-full font-mono text-3xl mb-12 text-gray-800 dark:text-gray-200">
               {Math.floor(currentStep.duration_seconds / 60)}:{(currentStep.duration_seconds % 60).toString().padStart(2, '0')}
             </div>
-            )
           )}
 
           {/* Voice Q&A Section */}
           <div className="w-full max-w-md">
-            <button 
+            <button
               onClick={handleAskQuestion}
               disabled={isListening}
               className={`w-full py-5 rounded-3xl flex flex-col items-center justify-center gap-3 transition-all duration-300 shadow-xl ${isListening ? 'bg-brick text-page ring-4 ring-brick/20' : 'bg-surface-color border-2 border-parchment-deep text-ink hover:border-brick'}`}
@@ -169,15 +168,15 @@ export default function RecipePage() {
 
         {/* Navigation Footer */}
         <div className="p-8 border-t border-parchment-deep flex justify-between max-w-5xl mx-auto w-full gap-6">
-          <button 
+          <button
             onClick={() => setCurrentStepIndex(p => Math.max(0, p - 1))}
             disabled={currentStepIndex === 0}
             className="flex-1 max-w-[100px] flex items-center justify-center p-5 rounded-2xl border-2 border-parchment-deep disabled:opacity-20 hover:bg-parchment transition-all text-ink"
           >
             <ChevronLeft size={32} />
           </button>
-          
-          <button 
+
+          <button
             onClick={() => {
               if (currentStepIndex === recipe.steps.length - 1) setIsCooking(false);
               else setCurrentStepIndex(p => p + 1);
@@ -219,8 +218,8 @@ export default function RecipePage() {
               </div>
             </div>
           </div>
-          
-          <button 
+
+          <button
             onClick={handleStartCooking}
             className="w-full py-5 bg-brick hover:bg-ink text-page rounded-3xl font-bold text-xl flex items-center justify-center gap-3 transition-all shadow-xl shadow-brick/20 hover:-translate-y-1 active:translate-y-0"
           >
@@ -233,7 +232,7 @@ export default function RecipePage() {
         <div className="lg:col-span-7">
           <h1 className="text-5xl font-bold mb-4 text-ink tracking-tight leading-tight">{recipe.title}</h1>
           <p className="text-xl text-warm-dark/70 mb-10 leading-relaxed font-medium">{recipe.description}</p>
-          
+
           <div className="flex flex-wrap gap-8 p-8 bg-parchment/50 border border-parchment-deep rounded-[2rem] mb-10">
             <div className="flex items-center gap-4">
               <div className="p-4 bg-brick/10 text-brick rounded-2xl"><Clock size={24} /></div>
@@ -256,7 +255,7 @@ export default function RecipePage() {
               <h2 className="text-3xl font-bold text-ink tracking-tight">Ingredients</h2>
               <div className="flex items-center gap-2 bg-parchment-deep/40 p-1.5 rounded-2xl border border-parchment-deep">
                 {[1, 2, 3].map(m => (
-                  <button 
+                  <button
                     key={m}
                     onClick={() => { setServingsMultiplier(m); setIsCustomMultiplier(false); }}
                     className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${servingsMultiplier === m && !isCustomMultiplier ? 'bg-ink text-page shadow-md' : 'text-warm-dark hover:bg-parchment'}`}
