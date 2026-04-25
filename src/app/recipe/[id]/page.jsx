@@ -3,8 +3,36 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { fetchRecipeById } from '../../../data/mockRecipes';
-import { Clock, Users, Play, ShoppingCart, ArrowLeft, Mic, ChevronRight, ChevronLeft, Check, ChefHat } from 'lucide-react';
+import { Clock, Users, Play, ShoppingCart, ArrowLeft, Mic, ChevronRight, ChevronLeft, Check, ChefHat, Minimize2 } from 'lucide-react';
 import Link from 'next/link';
+
+const playChime = () => {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    
+    osc.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(523.25, ctx.currentTime);
+    osc.frequency.setValueAtTime(659.25, ctx.currentTime + 0.15);
+    osc.frequency.setValueAtTime(783.99, ctx.currentTime + 0.3);
+    osc.frequency.setValueAtTime(1046.50, ctx.currentTime + 0.45);
+    
+    gainNode.gain.setValueAtTime(0, ctx.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.05);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.5);
+    
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 1.5);
+  } catch (e) {
+    console.error("Audio playback failed", e);
+  }
+};
 
 export default function RecipePage() {
   const { id } = useParams();
@@ -17,6 +45,9 @@ export default function RecipePage() {
   const [servingsMultiplier, setServingsMultiplier] = useState(1);
   const [customMultiplierInput, setCustomMultiplierInput] = useState('');
   const [isCustomMultiplier, setIsCustomMultiplier] = useState(false);
+  const [timerLeft, setTimerLeft] = useState(0);
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [isTimerMinimized, setIsTimerMinimized] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -40,6 +71,28 @@ export default function RecipePage() {
       setVoiceResponse("For this step, you want the garlic to be fragrant but not browned, so about 30 seconds on medium heat.");
     }, 2000);
   };
+
+  useEffect(() => {
+    if (isCooking && recipe && recipe.steps[currentStepIndex]) {
+      const stepDuration = recipe.steps[currentStepIndex].duration_seconds || 0;
+      setTimerLeft(stepDuration);
+      setIsTimerRunning(stepDuration > 0);
+      setIsTimerMinimized(false);
+    }
+  }, [currentStepIndex, isCooking, recipe]);
+
+  useEffect(() => {
+    let interval;
+    if (isTimerRunning && timerLeft > 0) {
+      interval = setInterval(() => {
+        setTimerLeft((prev) => prev - 1);
+      }, 1000);
+    } else if (timerLeft === 0 && isTimerRunning) {
+      setIsTimerRunning(false);
+      playChime();
+    }
+    return () => clearInterval(interval);
+  }, [isTimerRunning, timerLeft]);
 
   if (loading) {
     return (
@@ -86,9 +139,10 @@ export default function RecipePage() {
           </h2>
 
           {currentStep.duration_seconds > 0 && (
-            <div className="px-10 py-5 bg-parchment border-2 border-parchment-deep rounded-3xl font-mono text-4xl mb-12 text-brick shadow-sm">
+            <div className="px-8 py-4 bg-gray-100 dark:bg-gray-800 rounded-full font-mono text-3xl mb-12 text-gray-800 dark:text-gray-200">
               {Math.floor(currentStep.duration_seconds / 60)}:{(currentStep.duration_seconds % 60).toString().padStart(2, '0')}
             </div>
+            )
           )}
 
           {/* Voice Q&A Section */}
