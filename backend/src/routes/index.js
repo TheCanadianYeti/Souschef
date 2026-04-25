@@ -12,7 +12,7 @@ const router = express.Router();
 router.get('/health', (req, res) => {
     res.json({
         success: true,
-        message: 'Mise API is running',
+        message: 'souschef API is running',
         timestamp: new Date().toISOString(),
         version: '1.0.0'
     });

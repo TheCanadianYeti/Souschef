@@ -78,26 +78,26 @@ export default function RecipePage() {
   useEffect(() => {
     if (mounted) {
       const checkStatus = async () => {
-        const s = { 
+        const s = {
           speech: (window.SpeechRecognition || window.webkitSpeechRecognition) ? 'Supported' : 'NOT Supported',
           mic: 'Unknown',
           backend: 'checking...'
         };
-        
+
         try {
           const res = await fetch('http://localhost:3001/api/health');
           s.backend = res.ok ? 'Connected' : `Error: ${res.status}`;
         } catch (e) {
           s.backend = 'Disconnected';
         }
-        
+
         try {
           const permission = await navigator.permissions.query({ name: 'microphone' });
           s.mic = permission.state;
         } catch (e) {
           s.mic = 'Unknown';
         }
-        
+
         setDiag(s);
       };
       checkStatus();
@@ -121,6 +121,7 @@ export default function RecipePage() {
   useEffect(() => {
     if (typeof window === 'undefined' || !mounted) return;
 
+<<<<<<< HEAD
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) return;
 
@@ -133,6 +134,39 @@ export default function RecipePage() {
     recognition.onstart = () => {
       setIsListening(true);
       addLog('Microphone listening...');
+=======
+        recognition.onstart = () => {
+          setIsListening(true);
+          addLog('Microphone listening...');
+        };
+        recognition.onerror = (e) => {
+          addLog(`Mic error: ${e.error}`);
+          setIsListening(false);
+        };
+        recognition.onresult = (event) => {
+          const transcript = event.results[0][0].transcript.toLowerCase();
+          addLog(`Heard: "${transcript}"`);
+          if (transcript.includes('chef')) {
+            const cleanCommand = transcript
+              .replace(/hey chef|hi chef|chef/g, '')
+              .replace(/^[,.\s]+/, '')
+              .trim();
+            executeChefCommand(cleanCommand || 'repeat');
+          }
+        };
+        recognition.onend = () => {
+          setIsListening(false);
+          // Auto-restart if we aren't currently "Thinking..."
+          if (isCooking && isAssistantEnabled && !isProcessingCommand) {
+            try { recognition.start(); } catch (e) { }
+          }
+        };
+        setSpeechRecognition(recognition);
+      }
+    }
+    return () => {
+      if (recognition) try { recognition.stop(); } catch (e) { }
+>>>>>>> 2864eb83eb8821adc06eb0ba6fcd270fc2f98bd2
     };
     recognition.onerror = (e) => {
       addLog(`Mic error: ${e.error}`);
@@ -168,7 +202,7 @@ export default function RecipePage() {
   // Explicit effect to restart recognition when processing ends
   useEffect(() => {
     if (isCooking && isAssistantEnabled && !isProcessingCommand && speechRecognition && !isListening) {
-      try { speechRecognition.start(); } catch(e) {}
+      try { speechRecognition.start(); } catch (e) { }
     }
   }, [isProcessingCommand, isCooking, isAssistantEnabled, speechRecognition, isListening]);
 
@@ -227,7 +261,7 @@ export default function RecipePage() {
       });
 
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      
+
       const audioBlob = await response.blob();
       const audioUrl = URL.createObjectURL(audioBlob);
       stopAllAudio();
@@ -264,9 +298,9 @@ export default function RecipePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ commandText, recipeData: recipe, currentStepIndex: stepIndex })
       });
-      
+
       if (!response.ok) throw new Error(`Assistant Error: ${response.status}`);
-      
+
       const data = await response.json();
       addLog(`Action: ${data.action}`);
       setVoiceResponse(data.replyText);
@@ -291,6 +325,12 @@ export default function RecipePage() {
         clearTimeout(safetyTimer);
         setIsProcessingCommand(false);
       });
+<<<<<<< HEAD
+=======
+
+      // Safety unlock if audio fails or is silent
+      setTimeout(() => setIsProcessingCommand(false), 3000);
+>>>>>>> 2864eb83eb8821adc06eb0ba6fcd270fc2f98bd2
 
     } catch (error) {
       clearTimeout(safetyTimer);
@@ -307,7 +347,7 @@ export default function RecipePage() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stream.getTracks().forEach(track => track.stop());
-    } catch (err) {}
+    } catch (err) { }
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     if (AudioContext) {
       const ctx = new AudioContext();
@@ -320,7 +360,7 @@ export default function RecipePage() {
     const newState = !isAssistantEnabled;
     setIsAssistantEnabled(newState);
     if (!newState) {
-      if (speechRecognition) try { speechRecognition.stop(); } catch(e) {}
+      if (speechRecognition) try { speechRecognition.stop(); } catch (e) { }
       stopAllAudio();
       setVoiceResponse('');
     } else {
@@ -357,7 +397,11 @@ export default function RecipePage() {
     const progress = ((currentStepIndex + 1) / recipe.steps.length) * 100;
 
     return (
+<<<<<<< HEAD
       <div className="fixed inset-0 z-50 flex flex-col animate-in fade-in duration-500 overflow-hidden" style={{ backgroundColor: 'var(--bg-color)' }}>
+=======
+      <div className="fixed inset-0 z-50 bg-page flex flex-col animate-in fade-in duration-500 overflow-hidden">
+>>>>>>> 2864eb83eb8821adc06eb0ba6fcd270fc2f98bd2
         {/* Diagnostic Overlay (Bottom Left) */}
         <div className="fixed bottom-4 left-4 z-[60] bg-ink/90 text-[10px] text-page p-3 rounded-lg font-mono pointer-events-none opacity-50 hover:opacity-100 transition-opacity">
           <div className="font-bold mb-1 border-b border-page/20 pb-1">SYSTEM DIAGNOSTICS</div>
@@ -368,8 +412,13 @@ export default function RecipePage() {
             {debugLog.map((log, i) => <div key={i}>• {log}</div>)}
           </div>
         </div>
+<<<<<<< HEAD
         <div className="p-4 border-b border-border-color flex items-center justify-between glass">
           <button onClick={handleExitCooking} className="flex items-center gap-2 text-text-secondary hover:text-accent-color transition-colors font-semibold">
+=======
+        <div className="p-4 border-b border-parchment-deep flex items-center justify-between glass">
+          <button onClick={handleExitCooking} className="flex items-center gap-2 text-warm-dark hover:text-brick transition-colors font-semibold">
+>>>>>>> 2864eb83eb8821adc06eb0ba6fcd270fc2f98bd2
             <ArrowLeft size={20} />
             <span>Exit</span>
           </button>

@@ -1,6 +1,6 @@
-# Mise Backend API
+# souschef Backend API
 
-REST API backend for the Mise - AI-Powered Recipe Capture & Cooking Assistant application.
+REST API backend for the souschef - AI-Powered Recipe Capture & Cooking Assistant application.
 
 ## Tech Stack
 
@@ -38,9 +38,9 @@ REST API backend for the Mise - AI-Powered Recipe Capture & Cooking Assistant ap
 
 4. **Set up PostgreSQL database:**
    ```sql
-   CREATE DATABASE mise_db;
-   CREATE USER mise_user WITH PASSWORD 'your_secure_password';
-   GRANT ALL PRIVILEGES ON DATABASE mise_db TO mise_user;
+   CREATE DATABASE souschef_db;
+   CREATE USER souschef_user WITH PASSWORD 'your_secure_password';
+   GRANT ALL PRIVILEGES ON DATABASE souschef_db TO souschef_user;
    ```
 
 5. **Run migrations (automatic on first start):**
@@ -64,8 +64,8 @@ The server will start on `http://localhost:3001` with auto-reload on file change
 | `NODE_ENV` | Environment | `development` |
 | `DB_HOST` | PostgreSQL host | `localhost` |
 | `DB_PORT` | PostgreSQL port | `5432` |
-| `DB_NAME` | Database name | `mise_db` |
-| `DB_USER` | Database user | `mise_user` |
+| `DB_NAME` | Database name | `souschef_db` |
+| `DB_USER` | Database user | `souschef_user` |
 | `DB_PASSWORD` | Database password | - |
 | `JWT_SECRET` | JWT signing secret | - |
 | `JWT_EXPIRES_IN` | JWT expiration | `7d` |

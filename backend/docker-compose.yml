@@ -4,18 +4,18 @@ services:
   # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
-    container_name: mise_postgres
+    container_name: souschef_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: mise_db
-      POSTGRES_USER: mise_user
-      POSTGRES_PASSWORD: mise_password
+      POSTGRES_DB: souschef_db
+      POSTGRES_USER: souschef_user
+      POSTGRES_PASSWORD: souschef_password
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U mise_user -d mise_db"]
+      test: ["CMD-SHELL", "pg_isready -U souschef_user -d souschef_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -23,7 +23,7 @@ services:
   # Redis (Optional - for caching and rate limiting)
   redis:
     image: redis:7-alpine
-    container_name: mise_redis
+    container_name: souschef_redis
     restart: unless-stopped
     ports:
       - "6379:6379"
@@ -40,16 +40,16 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: mise_api
+    container_name: souschef_api
     restart: unless-stopped
     environment:
       NODE_ENV: development
       PORT: 3001
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_NAME: mise_db
-      DB_USER: mise_user
-      DB_PASSWORD: mise_password
+      DB_NAME: souschef_db
+      DB_USER: souschef_user
+      DB_PASSWORD: souschef_password
       REDIS_HOST: redis
       REDIS_PORT: 6379
       JWT_SECRET: your_jwt_secret_key_change_in_production
