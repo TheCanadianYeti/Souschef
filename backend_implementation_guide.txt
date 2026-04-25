@@ -1,0 +1,60 @@
+Souschef - Backend Implementation Guide
+========================================
+
+This document outlines the required backend services, endpoints, and database models needed to convert the current frontend prototype into a fully functional application, as specified in the PRD.
+
+1. Database Schema Implementation (PostgreSQL)
+-----------------------------------------------
+The frontend currently uses static mock data. You will need to create the following tables and relationships:
+- Users: id, email, password_hash, display_name, preferences, dietary_restrictions.
+- Recipes: id, user_id, title, description, source_url, source_type, servings, cook_time, prep_time, difficulty, tags.
+- Ingredients: id, recipe_id, name, quantity, unit, dietary_flags.
+- CookingSteps: id, recipe_id, step_number, instruction, duration_seconds.
+- Collections/Ratings: For post-MVP features.
+
+2. Authentication (Auth0 + JWT)
+-------------------------------
+- Set up an Auth0 tenant.
+- Replace the mocked frontend user state with an Auth0 provider.
+- Backend must verify JWT tokens on all protected routes (e.g., saving recipes, starting cook sessions).
+
+3. Core API Endpoints (Node.js + Express)
+------------------------------------------
+Implement the following REST endpoints to replace frontend mock calls:
+
+Recipe Management:
+- GET /recipes -> Fetch user's library.
+- GET /recipes/:id -> Fetch recipe details (ingredients + steps).
+- PUT /recipes/:id -> Update recipe details after user edits.
+- DELETE /recipes/:id -> Remove a recipe.
+
+Recipe Capture (AI Integration):
+- POST /recipes/capture -> Handle multipart/form-data (Multer) for video/image uploads.
+  * Must extract audio/visuals and send to Claude API for parsing.
+- POST /recipes/from-url -> Accept a URL, scrape content, and send to Claude API for parsing.
+  * Both should return a structured JSON matching the Recipe/Ingredient/CookingStep schema.
+
+4. AI & Voice Services Integration
+----------------------------------
+- Claude API:
+  * Used in capture endpoints to parse raw text/video transcripts into structured JSON.
+  * Used for the mid-cook Q&A feature (`POST /cook/:recipe_id/ask`).
+- ElevenLabs API:
+  * Generate text-to-speech audio files for each cooking step, or stream them directly to the frontend.
+  * The frontend currently simulates this using standard Web Speech API, but ElevenLabs will provide premium quality.
+
+5. Instacart Integration
+-------------------------
+- POST /grocery/checkout
+  * Accept a list of ingredient IDs/names.
+  * Map them to Instacart products or use Instacart's deep linking API to generate a pre-filled cart URL.
+  * Return the redirect URL to the frontend.
+
+6. Caching & Rate Limiting (Redis)
+----------------------------------
+- Set up Redis to rate-limit AI endpoint calls (Claude API is expensive).
+- Cache frequently accessed recipes or Instacart product mappings.
+
+Frontend Integration Notes:
+---------------------------
+Look for the `// TODO: BACKEND INTEGRATION` comments in the React source code. These comments highlight exactly where API calls (via Axios or fetch) need to be inserted to replace the current `setTimeout` simulated responses.
