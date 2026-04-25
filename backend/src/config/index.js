@@ -49,7 +49,7 @@ const config = {
     claude: {
         apiKey: process.env.CLAUDE_API_KEY,
         apiUrl: process.env.CLAUDE_API_URL || 'https://api.anthropic.com/v1/messages',
-        model: process.env.CLAUDE_MODEL || 'claude-sonnet-4-20250514'
+        model: process.env.CLAUDE_MODEL || 'claude-3-sonnet-20240229'
     },
 
     // ElevenLabs API
@@ -63,6 +63,17 @@ const config = {
         apiKey: process.env.INSTACART_API_KEY,
         apiSecret: process.env.INSTACART_API_SECRET,
         merchantId: process.env.INSTACART_MERCHANT_ID
+    },
+
+    // Google Cloud (Vision only)
+    googleCloud: {
+        visionApiKey: process.env.GCP_VISION_API_KEY
+    },
+
+    // Gemini / Gemma API
+    gemma: {
+        apiKey: process.env.GEMMA_API_KEY,
+        model: process.env.GEMMA_MODEL || 'gemma-4-26b-a4b-it'
     },
 
     // Rate Limiting

@@ -3,39 +3,37 @@
 @theme {
   --font-sans: "Inter", system-ui, sans-serif;
   
-  --color-primary-50: #f0f9ff;
-  --color-primary-500: #0ea5e9;
-  --color-primary-600: #0284c7;
-  --color-primary-700: #0369a1;
-
-  --color-dark-bg: #0f172a;
-  --color-dark-surface: #1e293b;
-  --color-dark-border: #334155;
+  /* Brand Colors */
+  --color-brick: #5A1915;
+  --color-aged-gold: #C8974A;
   
-  --color-light-bg: #f8fafc;
-  --color-light-surface: #ffffff;
-  --color-light-border: #e2e8f0;
+  /* Neutrals */
+  --color-page: #F7F2EB;
+  --color-parchment: #EDE5D8;
+  --color-parchment-deep: #D8CCBC;
+  --color-warm-dark: #2D2926;
+  --color-ink: #1A1614;
 }
 
 @layer base {
   :root {
-    --bg-color: var(--color-light-bg);
-    --surface-color: var(--color-light-surface);
-    --text-primary: #0f172a;
-    --text-secondary: #475569;
-    --border-color: var(--color-light-border);
-    --accent-color: var(--color-primary-500);
-    --accent-hover: var(--color-primary-600);
+    --bg-color: var(--color-page);
+    --surface-color: var(--color-parchment);
+    --text-primary: var(--color-warm-dark);
+    --text-secondary: var(--color-warm-dark); /* Using warm dark for body */
+    --border-color: var(--color-parchment-deep);
+    --accent-color: var(--color-brick);
+    --accent-hover: #4a1411; /* Slightly darker brick for hover */
   }
 
   .dark {
-    --bg-color: var(--color-dark-bg);
-    --surface-color: var(--color-dark-surface);
-    --text-primary: #f8fafc;
-    --text-secondary: #94a3b8;
-    --border-color: var(--color-dark-border);
-    --accent-color: var(--color-primary-500);
-    --accent-hover: var(--color-primary-600);
+    --bg-color: var(--color-ink);
+    --surface-color: #241f1c; /* Custom slightly lighter ink for surfaces */
+    --text-primary: var(--color-page);
+    --text-secondary: var(--color-parchment);
+    --border-color: var(--color-warm-dark);
+    --accent-color: var(--color-aged-gold); /* Gold accent on dark only */
+    --accent-hover: #b08440;
   }
 
   body {
@@ -43,23 +41,33 @@
     color: var(--text-primary);
     font-family: var(--font-sans);
     transition: background-color 0.3s ease, color 0.3s ease;
+    line-height: 1.6;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    color: var(--color-ink);
+  }
+  
+  .dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
+    color: var(--color-page);
   }
 }
 
 @layer utilities {
   .glass {
-    background: rgba(255, 255, 255, 0.7);
+    background: rgba(247, 242, 235, 0.7); /* Page color with opacity */
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.18);
+    border: 1px solid rgba(216, 204, 188, 0.3);
   }
   
   .dark .glass {
-    background: rgba(30, 41, 59, 0.7);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(26, 22, 20, 0.7); /* Ink color with opacity */
+    border: 1px solid rgba(200, 151, 74, 0.1);
   }
 
+  /* Refined gradient using your brick and gold */
   .text-gradient {
-    background: linear-gradient(to right, var(--color-primary-500), #8b5cf6);
+    background: linear-gradient(to right, var(--color-brick), var(--color-aged-gold));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
   }
@@ -70,12 +78,12 @@
   width: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: var(--color-page);
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--border-color);
+  background: var(--color-parchment-deep);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
+  background: var(--color-warm-dark);
 }
