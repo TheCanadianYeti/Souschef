@@ -14,7 +14,7 @@ export default function Navbar() {
   }, []);
 
   return (
-    <nav className="sticky top-0 z-50 w-full bg-page/80 backdrop-blur-md border-b border-border-color shadow-sm">
+    <nav className="sticky top-0 z-50 w-full backdrop-blur-md border-b border-border-color shadow-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--bg-color) 85%, transparent)' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
           <div className="flex items-center gap-2">
@@ -31,19 +31,11 @@ export default function Navbar() {
           <div className="flex items-center gap-4">
             {/* Focus ring updated to Gold */}
             <Link href="/profile" className="focus:outline-none focus:ring-2 focus:ring-aged-gold rounded-full transition-transform hover:scale-105">
-<<<<<<< HEAD
               {mounted && profileImage ? (
-                <img 
-                  src={profileImage} 
-                  alt="Profile" 
-                  className="h-8 w-8 rounded-full object-cover shadow-sm border-2 border-parchment-deep" 
-=======
-              {profileImage ? (
                 <img
                   src={profileImage}
                   alt="Profile"
                   className="h-8 w-8 rounded-full object-cover shadow-sm border-2 border-border-color"
->>>>>>> ef011094c43d37786beb8feb7d585615ce218375
                 />
               ) : (
                 /* Swapped Purple Gradient for Brick/Gold Gradient */

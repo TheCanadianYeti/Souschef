@@ -169,7 +169,8 @@ export default function CapturePage() {
       {/* Tab Switcher */}
       <div className="glass rounded-3xl p-2 mb-8 flex relative">
         <div
-          className={`absolute inset-y-2 w-[calc(50%-0.5rem)] bg-white dark:bg-surface-color rounded-2xl shadow-sm transition-all duration-300 ${activeTab === 'upload' ? 'translate-x-full ml-2' : 'ml-0'}`}
+          className={`absolute inset-y-2 w-[calc(50%-0.5rem)] rounded-2xl shadow-sm transition-all duration-300 ${activeTab === 'upload' ? 'translate-x-full ml-2' : 'ml-0'}`}
+          style={{ backgroundColor: 'var(--surface-color)' }}
         />
         <button
           onClick={() => setActiveTab('url')}
@@ -213,7 +214,7 @@ export default function CapturePage() {
             <button
               type="submit"
               disabled={isProcessing || success}
-              className="w-full py-4 bg-accent-color hover:bg-ink dark:hover:bg-page/20 text-page rounded-2xl font-bold text-lg flex items-center justify-center gap-2 transition-all disabled:opacity-70"
+              className="w-full py-4 bg-accent-color hover:opacity-80 text-page rounded-2xl font-bold text-lg flex items-center justify-center gap-2 transition-all disabled:opacity-70"
             >
               {isProcessing ? (
                 <>
@@ -240,7 +241,7 @@ export default function CapturePage() {
               <button
                 onClick={triggerCamera}
                 disabled={isProcessing || success}
-                className="flex flex-col items-center justify-center gap-4 p-8 border-2 border-dashed border-border-color rounded-3xl hover:bg-parchment/30 dark:hover:bg-surface-color transition-colors disabled:opacity-50"
+                className="flex flex-col items-center justify-center gap-4 p-8 border-2 border-dashed border-border-color rounded-3xl hover:bg-surface-color transition-colors disabled:opacity-50"
               >
                 <div className="p-4 bg-accent-color/10 dark:bg-accent-color/20 rounded-full text-accent-color">
                   <Camera size={32} />
@@ -255,7 +256,7 @@ export default function CapturePage() {
               <button
                 onClick={triggerUpload}
                 disabled={isProcessing || success}
-                className="flex flex-col items-center justify-center gap-4 p-8 border-2 border-dashed border-border-color rounded-3xl hover:bg-parchment/30 dark:hover:bg-surface-color transition-colors disabled:opacity-50"
+                className="flex flex-col items-center justify-center gap-4 p-8 border-2 border-dashed border-border-color rounded-3xl hover:bg-surface-color transition-colors disabled:opacity-50"
               >
                 <div className="p-4 bg-accent-color/10 dark:bg-accent-color/20 rounded-full text-accent-color">
                   <Upload size={32} />

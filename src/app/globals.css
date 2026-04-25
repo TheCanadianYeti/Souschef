@@ -7,10 +7,11 @@
   font-style: normal;
 }
 
+/* ─── Static Brand Palette ─────────────────────────────────────────────────── */
 @theme {
   --font-sans: "Inter", system-ui, sans-serif;
 
-  /* Brand Palette */
+  /* Static brand colors (don't flip on dark) */
   --color-brick: #5a1915;
   --color-page: #f7f2eb;
   --color-parchment: #ede5d8;
@@ -18,98 +19,145 @@
   --color-warm-dark: #2d2926;
   --color-ink: #1a1614;
   --color-aged-gold: #c8974a;
+
+  /* Adaptive semantic tokens — wired to CSS vars so dark: overrides work */
+  --color-bg-color: var(--bg-color);
+  --color-surface-color: var(--surface-color);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-border-color: var(--border-color);
+  --color-accent-color: var(--accent-color);
+  --color-card-bg: var(--card-bg);
+  --color-input-bg: var(--input-bg);
+  --color-input-border: var(--input-border);
+  --color-badge-bg: var(--badge-bg);
+  --color-badge-text: var(--badge-text);
 }
 
+/* ─── Light Mode Defaults ───────────────────────────────────────────────────── */
 @layer base {
   :root {
-    --bg-color: var(--color-page);
-    --surface-color: #fdfaf6; /* High contrast surface from your image */
-    --text-primary: var(--color-ink); /* #1A1614 - Headlines */
-    --text-secondary: var(--color-warm-dark); /* #2D2926 - Body */
-    --text-muted: var(--color-warm-dark);
-    --border-color: var(--color-parchment-deep);
-    --accent-color: var(--color-brick);
+    --bg-color: #f7f2eb;
+    --surface-color: #fdfaf6;
+    --text-primary: #1a1614;
+    --text-secondary: #2d2926;
+    --text-muted: #2d2926;
+    --border-color: #d8ccbc;
+    --accent-color: #5a1915;
     --card-bg: rgba(253, 250, 246, 0.8);
-    --input-bg: var(--color-page);
-    --input-border: var(--color-parchment-deep);
-    --badge-bg: var(--color-parchment-deep);
-    --badge-text: var(--color-warm-dark);
+    --input-bg: #f7f2eb;
+    --input-border: #d8ccbc;
+    --badge-bg: #d8ccbc;
+    --badge-text: #2d2926;
   }
 
+  /* ─── Dark Mode Overrides ─────────────────────────────────────────────────── */
   .dark {
-    --bg-color: var(--color-ink);
+    --bg-color: #1a1614;
     --surface-color: #241f1c;
-    --text-primary: var(--color-page);
-    --text-secondary: var(--color-parchment);
-    --text-muted: var(--color-parchment-deep);
+    --text-primary: #f7f2eb;
+    --text-secondary: #ede5d8;
+    --text-muted: #d8ccbc;
     --border-color: #403830;
-    --accent-color: var(--color-aged-gold);
-    --card-bg: rgba(36, 31, 28, 0.8);
+    --accent-color: #c8974a;
+    --card-bg: rgba(36, 31, 28, 0.85);
     --input-bg: #2a2420;
     --input-border: #403830;
     --badge-bg: #403830;
-    --badge-text: var(--color-parchment);
+    --badge-text: #ede5d8;
+  }
+
+  html {
+    background-color: var(--bg-color);
+    color: var(--text-secondary);
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 
   body {
     background-color: var(--bg-color);
-    color: var(--text-secondary); /* Defaulting to Body Text color */
+    color: var(--text-secondary);
     font-family: var(--font-sans);
-    -webkit-font-smoothing: antialiased; /* Improves readability */
+    -webkit-font-smoothing: antialiased;
     line-height: 1.6;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 
-  /* Fix for the unreadable headlines */
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
+  h1, h2, h3, h4, h5, h6 {
     color: var(--text-primary);
     font-weight: 700;
     letter-spacing: -0.02em;
   }
 }
 
+/* ─── Utility Classes ───────────────────────────────────────────────────────── */
 @layer utilities {
-  /* Accessibility Scaling */
-  .text-xs {
-    font-size: calc(0.75rem * var(--text-scale, 1)) !important;
-  }
-  .text-sm {
-    font-size: calc(0.875rem * var(--text-scale, 1)) !important;
-  }
-  .text-base {
-    font-size: calc(1rem * var(--text-scale, 1)) !important;
-  }
-  .text-lg {
-    font-size: calc(1.125rem * var(--text-scale, 1)) !important;
-  }
-  .text-xl {
-    font-size: calc(1.25rem * var(--text-scale, 1)) !important;
-  }
-  .text-2xl {
-    font-size: calc(1.5rem * var(--text-scale, 1)) !important;
+
+  /* Glassmorphism — adapts to dark mode via CSS vars */
+  .glass {
+    background-color: var(--card-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
   }
 
-  /* Buttons & Chips (The "Boxes") */
-  .btn-primary {
-    background-color: var(--color-brick);
-    color: var(--color-page); /* White/Cream text on brick for 8.4:1 contrast */
-    padding: 0.5rem 1rem;
-    border-radius: 9999px;
-    font-weight: 600;
+  /* Brand gradient text: Brick → Gold in light, Gold → Parchment in dark */
+  .text-gradient {
+    background: linear-gradient(135deg, #5a1915 0%, #c8974a 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .dark .text-gradient {
+    background: linear-gradient(135deg, #c8974a 0%, #ede5d8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
 
-  .tag-parchment {
-    background-color: var(--color-parchment-deep);
-    color: var(--color-warm-dark); /* 7.1:1 contrast */
-  }
-
+  /* Accessibility: dyslexia font */
   .font-accessible,
   .font-accessible * {
     font-family: "OpenDyslexic", sans-serif !important;
     line-height: 1.8 !important;
+  }
+
+  /* Accessibility: font-size scaling */
+  .text-xs   { font-size: calc(0.75rem   * var(--text-scale, 1)) !important; }
+  .text-sm   { font-size: calc(0.875rem  * var(--text-scale, 1)) !important; }
+  .text-base { font-size: calc(1rem      * var(--text-scale, 1)) !important; }
+  .text-lg   { font-size: calc(1.125rem  * var(--text-scale, 1)) !important; }
+  .text-xl   { font-size: calc(1.25rem   * var(--text-scale, 1)) !important; }
+  .text-2xl  { font-size: calc(1.5rem    * var(--text-scale, 1)) !important; }
+
+  /* Semantic colour helpers used directly as class names */
+  .bg-page          { background-color: var(--bg-color) !important; }
+  .bg-surface       { background-color: var(--surface-color) !important; }
+  .text-page        { color: var(--bg-color) !important; }
+  .border-page      { border-color: var(--bg-color) !important; }
+
+  /* Button primaries */
+  .btn-primary {
+    background-color: var(--accent-color);
+    color: #f7f2eb;
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    font-weight: 600;
+    transition: background-color 0.2s ease;
+  }
+
+  .tag-parchment {
+    background-color: var(--badge-bg);
+    color: var(--badge-text);
+  }
+
+  /* Transition helper for smooth theme switching on all elements */
+  * {
+    transition-property: background-color, border-color, color, fill, stroke;
+    transition-timing-function: ease;
+    transition-duration: 200ms;
+  }
+  /* Don't transition transforms/opacity (breaks animations) */
+  *:where([class*="animate-"], [class*="transition-"]) {
+    transition-property: revert;
   }
 }

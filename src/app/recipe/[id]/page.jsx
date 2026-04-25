@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
 import { fetchRecipeById } from '../../../data/mockRecipes';
@@ -57,6 +57,20 @@ export default function RecipePage() {
   const [debugLog, setDebugLog] = useState([]);
   const [diag, setDiag] = useState({ backend: 'checking...', mic: 'unknown', speech: 'unknown' });
 
+  // Refs so callbacks (onend, executeChefCommand) always see live values,
+  // not stale closures captured at effect-setup time.
+  const currentStepIndexRef = useRef(currentStepIndex);
+  const isAssistantEnabledRef = useRef(isAssistantEnabled);
+  const isProcessingCommandRef = useRef(isProcessingCommand);
+  const isCookingRef = useRef(isCooking);
+  const recognitionRef = useRef(null);
+
+  // Keep refs in sync with state
+  useEffect(() => { currentStepIndexRef.current = currentStepIndex; }, [currentStepIndex]);
+  useEffect(() => { isAssistantEnabledRef.current = isAssistantEnabled; }, [isAssistantEnabled]);
+  useEffect(() => { isProcessingCommandRef.current = isProcessingCommand; }, [isProcessingCommand]);
+  useEffect(() => { isCookingRef.current = isCooking; }, [isCooking]);
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -105,48 +119,51 @@ export default function RecipePage() {
   }, [id]);
 
   useEffect(() => {
-    let recognition = null;
-    if (typeof window !== 'undefined' && mounted) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        recognition = new SpeechRecognition();
-        recognition.continuous = false;
-        recognition.interimResults = false;
-        recognition.lang = 'en-US';
+    if (typeof window === 'undefined' || !mounted) return;
 
-        recognition.onstart = () => {
-          setIsListening(true);
-          addLog('Microphone listening...');
-        };
-        recognition.onerror = (e) => {
-          addLog(`Mic error: ${e.error}`);
-          setIsListening(false);
-        };
-        recognition.onresult = (event) => {
-          const transcript = event.results[0][0].transcript.toLowerCase();
-          addLog(`Heard: "${transcript}"`);
-          if (transcript.includes('chef')) {
-            const cleanCommand = transcript
-              .replace(/hey chef|hi chef|chef/g, '')
-              .replace(/^[,.\s]+/, '')
-              .trim();
-            executeChefCommand(cleanCommand || 'repeat');
-          }
-        };
-        recognition.onend = () => {
-          setIsListening(false);
-          // Auto-restart if we aren't currently "Thinking..."
-          if (isCooking && isAssistantEnabled && !isProcessingCommand) {
-            try { recognition.start(); } catch(e) {}
-          }
-        };
-        setSpeechRecognition(recognition);
-      }
-    }
-    return () => {
-      if (recognition) try { recognition.stop(); } catch(e) {}
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+    recognitionRef.current = recognition;
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      addLog('Microphone listening...');
     };
-  }, [isCooking, isAssistantEnabled, mounted]); // Removed isProcessingCommand to prevent internal restart loops
+    recognition.onerror = (e) => {
+      addLog(`Mic error: ${e.error}`);
+      setIsListening(false);
+    };
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript.toLowerCase();
+      addLog(`Heard: "${transcript}"`);
+      if (transcript.includes('chef')) {
+        const cleanCommand = transcript
+          .replace(/hey chef|hi chef|chef/g, '')
+          .replace(/^[,.\s]+/, '')
+          .trim();
+        executeChefCommand(cleanCommand || 'repeat');
+      }
+    };
+    recognition.onend = () => {
+      setIsListening(false);
+      // Use refs — not closed-over state — so we always read live values.
+      if (isCookingRef.current && isAssistantEnabledRef.current && !isProcessingCommandRef.current) {
+        try { recognition.start(); } catch(e) {}
+      }
+    };
+
+    setSpeechRecognition(recognition);
+
+    return () => {
+      try { recognition.stop(); } catch(e) {}
+      recognitionRef.current = null;
+    };
+  }, [mounted]); // Only (re)create when mounted — refs handle live state
 
   // Explicit effect to restart recognition when processing ends
   useEffect(() => {
@@ -154,6 +171,15 @@ export default function RecipePage() {
       try { speechRecognition.start(); } catch(e) {}
     }
   }, [isProcessingCommand, isCooking, isAssistantEnabled, speechRecognition, isListening]);
+
+  // Start recognition when assistant is first enabled during cooking
+  useEffect(() => {
+    if (isCooking && isAssistantEnabled && speechRecognition) {
+      try { speechRecognition.start(); } catch(e) {}
+    } else if (!isAssistantEnabled && speechRecognition) {
+      try { speechRecognition.stop(); } catch(e) {}
+    }
+  }, [isCooking, isAssistantEnabled, speechRecognition]);
 
   useEffect(() => {
     if (isCooking && recipe && recipe.steps[currentStepIndex]) {
@@ -222,15 +248,21 @@ export default function RecipePage() {
   };
 
   const executeChefCommand = async (commandText) => {
-    addLog(`Chef heard: "${commandText}"`);
+    // Use ref so we always read the current step index, not a stale closure
+    const stepIndex = currentStepIndexRef.current;
+    addLog(`Chef heard: "${commandText}" (step ${stepIndex})`);
     setIsProcessingCommand(true);
     setVoiceResponse('Thinking...');
+
+    // Safety unlock — extended to 8s to not race normal TTS playback
+    const safetyTimer = setTimeout(() => setIsProcessingCommand(false), 8000);
+
     try {
       const BASE_URL = 'http://localhost:3001/api';
       const response = await fetch(`${BASE_URL}/assistant/command`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ commandText, recipeData: recipe, currentStepIndex })
+        body: JSON.stringify({ commandText, recipeData: recipe, currentStepIndex: stepIndex })
       });
       
       if (!response.ok) throw new Error(`Assistant Error: ${response.status}`);
@@ -240,21 +272,28 @@ export default function RecipePage() {
       setVoiceResponse(data.replyText);
 
       // Perform navigation IMMEDIATELY, don't wait for audio
-      if (data.action === 'NEXT_STEP' && currentStepIndex < recipe.steps.length - 1) {
-        setCurrentStepIndex(prev => prev + 1);
-      } else if (data.action === 'PREVIOUS_STEP' && currentStepIndex > 0) {
-        setCurrentStepIndex(prev => prev - 1);
+      if (data.action === 'NEXT_STEP') {
+        setCurrentStepIndex(prev => {
+          const next = Math.min(prev + 1, recipe.steps.length - 1);
+          currentStepIndexRef.current = next;
+          return next;
+        });
+      } else if (data.action === 'PREVIOUS_STEP') {
+        setCurrentStepIndex(prev => {
+          const next = Math.max(prev - 1, 0);
+          currentStepIndexRef.current = next;
+          return next;
+        });
       }
 
-      // Play audio in background
+      // Play audio; clear safety timer on completion
       playStepAudio(data.replyText, () => {
+        clearTimeout(safetyTimer);
         setIsProcessingCommand(false);
       });
-      
-      // Safety unlock if audio fails or is silent
-      setTimeout(() => setIsProcessingCommand(false), 3000);
 
     } catch (error) {
+      clearTimeout(safetyTimer);
       addLog(`Error: ${error.message}`);
       setVoiceResponse("I'm sorry, I couldn't reach the AI. Try saying 'Next step' again.");
       setIsProcessingCommand(false);
@@ -304,26 +343,21 @@ export default function RecipePage() {
     );
   }
 
-<<<<<<< HEAD
   if (!recipe) {
     return (
       <div className="container mx-auto px-4 py-8 text-center">
-        <h2 className="text-2xl font-bold text-ink mb-4">Recipe not found</h2>
+        <h2 className="text-2xl font-bold text-text-primary mb-4">Recipe not found</h2>
         <Link href="/" className="text-brick hover:underline">Back to Dashboard</Link>
       </div>
     );
   }
-=======
-  if (!recipe) return <div className="container mx-auto px-4 py-8 text-center text-xl text-text-primary">Recipe not found.</div>;
->>>>>>> ef011094c43d37786beb8feb7d585615ce218375
 
   if (isCooking) {
     const currentStep = recipe.steps[currentStepIndex];
     const progress = ((currentStepIndex + 1) / recipe.steps.length) * 100;
 
     return (
-<<<<<<< HEAD
-      <div className="fixed inset-0 z-50 bg-page flex flex-col animate-in fade-in duration-500 overflow-hidden">
+      <div className="fixed inset-0 z-50 flex flex-col animate-in fade-in duration-500 overflow-hidden" style={{ backgroundColor: 'var(--bg-color)' }}>
         {/* Diagnostic Overlay (Bottom Left) */}
         <div className="fixed bottom-4 left-4 z-[60] bg-ink/90 text-[10px] text-page p-3 rounded-lg font-mono pointer-events-none opacity-50 hover:opacity-100 transition-opacity">
           <div className="font-bold mb-1 border-b border-page/20 pb-1">SYSTEM DIAGNOSTICS</div>
@@ -334,14 +368,8 @@ export default function RecipePage() {
             {debugLog.map((log, i) => <div key={i}>• {log}</div>)}
           </div>
         </div>
-        <div className="p-4 border-b border-parchment-deep flex items-center justify-between glass">
-          <button onClick={handleExitCooking} className="flex items-center gap-2 text-warm-dark hover:text-brick transition-colors font-semibold">
-=======
-      <div className="fixed inset-0 z-50 bg-page flex flex-col animate-in fade-in duration-500">
-        {/* Cooking Header */}
         <div className="p-4 border-b border-border-color flex items-center justify-between glass">
-          <button onClick={() => setIsCooking(false)} className="flex items-center gap-2 text-text-secondary hover:text-accent-color transition-colors font-semibold">
->>>>>>> ef011094c43d37786beb8feb7d585615ce218375
+          <button onClick={handleExitCooking} className="flex items-center gap-2 text-text-secondary hover:text-accent-color transition-colors font-semibold">
             <ArrowLeft size={20} />
             <span>Exit</span>
           </button>
@@ -352,13 +380,13 @@ export default function RecipePage() {
         </div>
 
         {/* Progress Bar - Brick on Parchment */}
-        <div className="h-2 bg-parchment-deep dark:bg-surface-color w-full">
+        <div className="h-2 w-full" style={{ backgroundColor: 'var(--border-color)' }}>
           <div className="h-full bg-accent-color transition-all duration-700 ease-in-out" style={{ width: `${progress}%` }} />
         </div>
 
         {/* Main Cooking View */}
         <div className="flex-grow flex flex-col items-center justify-center p-6 sm:p-12 max-w-5xl mx-auto w-full relative">
-          <div className={`absolute top-8 right-8 ${isAssistantEnabled ? 'animate-pulse text-brick' : 'text-warm-dark/30'} hidden sm:flex items-center gap-2 transition-all`}>
+          <div className={`absolute top-8 right-8 ${isAssistantEnabled ? 'animate-pulse text-accent-color' : 'text-text-muted opacity-30'} hidden sm:flex items-center gap-2 transition-all`}>
             <ChefHat size={20} />
             <span className="text-sm font-bold uppercase">{isAssistantEnabled ? 'Hands-free active' : 'Voice assistant off'}</span>
           </div>
@@ -368,14 +396,13 @@ export default function RecipePage() {
           </h2>
 
           {currentStep.duration_seconds > 0 && (
-<<<<<<< HEAD
             <div className="flex flex-col items-center gap-6 mb-12">
-              <div className="px-12 py-6 bg-surface-color border-4 border-parchment-deep rounded-[2rem] font-mono text-6xl text-ink shadow-inner flex items-center justify-center min-w-[280px]">
+              <div className="px-12 py-6 bg-surface-color border-4 border-border-color rounded-[2rem] font-mono text-6xl text-text-primary shadow-inner flex items-center justify-center min-w-[280px]">
                 {Math.floor(timerLeft / 60)}:{(timerLeft % 60).toString().padStart(2, '0')}
               </div>
               <button
                 onClick={() => setIsTimerRunning(!isTimerRunning)}
-                className="flex items-center gap-2 px-8 py-3 bg-brick text-page rounded-2xl shadow-lg hover:bg-ink transition-all active:scale-95 font-bold uppercase tracking-wider"
+                className="flex items-center gap-2 px-8 py-3 bg-accent-color text-page rounded-2xl shadow-lg hover:opacity-80 transition-all active:scale-95 font-bold uppercase tracking-wider"
               >
                 {isTimerRunning ? (
                   <>
@@ -389,30 +416,17 @@ export default function RecipePage() {
                   </>
                 )}
               </button>
-=======
-            <div className="px-8 py-4 bg-surface-color dark:bg-bg-color rounded-full font-mono text-3xl mb-12 text-text-primary border border-border-color">
-              {Math.floor(currentStep.duration_seconds / 60)}:{(currentStep.duration_seconds % 60).toString().padStart(2, '0')}
->>>>>>> ef011094c43d37786beb8feb7d585615ce218375
             </div>
           )}
 
           {/* Voice Q&A Section */}
           <div className="w-full max-w-md">
             <button
-<<<<<<< HEAD
               onClick={handleToggleAssistant}
-              className={`w-full py-5 rounded-3xl flex flex-col items-center justify-center gap-3 transition-all duration-300 shadow-xl ${isAssistantEnabled ? 'bg-brick text-page ring-4 ring-brick/20' : 'bg-surface-color border-2 border-parchment-deep text-ink hover:border-brick'}`}
+              className={`w-full py-5 rounded-3xl flex flex-col items-center justify-center gap-3 transition-all duration-300 shadow-xl ${isAssistantEnabled ? 'bg-accent-color text-page ring-4 ring-accent-color/20' : 'bg-surface-color border-2 border-border-color text-text-primary hover:border-accent-color'}`}
             >
-              <div className={`p-4 rounded-full ${isAssistantEnabled ? 'bg-page text-brick animate-bounce' : 'bg-parchment text-brick'}`}>
+              <div className={`p-4 rounded-full ${isAssistantEnabled ? 'bg-surface-color text-accent-color animate-bounce' : 'bg-border-color text-accent-color'}`}>
                 {isAssistantEnabled ? <Mic size={28} /> : <Mic size={28} className="opacity-50" />}
-=======
-              onClick={handleAskQuestion}
-              disabled={isListening}
-              className={`w-full py-5 rounded-3xl flex flex-col items-center justify-center gap-3 transition-all duration-300 shadow-xl ${isListening ? 'bg-accent-color text-page ring-4 ring-accent-color/20' : 'bg-surface-color border-2 border-border-color text-text-primary hover:border-accent-color'}`}
-            >
-              <div className={`p-4 rounded-full ${isListening ? 'bg-page text-accent-color animate-bounce' : 'bg-parchment text-accent-color dark:bg-surface-color'}`}>
-                <Mic size={28} />
->>>>>>> ef011094c43d37786beb8feb7d585615ce218375
               </div>
               <span className="font-bold text-lg">{isAssistantEnabled ? 'Listening (Say "Hey Chef")' : 'Enable Hands-free'}</span>
             </button>
@@ -431,7 +445,7 @@ export default function RecipePage() {
           <button
             onClick={() => setCurrentStepIndex(p => Math.max(0, p - 1))}
             disabled={currentStepIndex === 0}
-            className="flex-1 max-w-[100px] flex items-center justify-center p-5 rounded-2xl border-2 border-border-color disabled:opacity-20 hover:bg-parchment dark:hover:bg-surface-color transition-all text-text-primary"
+            className="flex-1 max-w-[100px] flex items-center justify-center p-5 rounded-2xl border-2 border-border-color disabled:opacity-20 hover:bg-surface-color transition-all text-text-primary"
           >
             <ChevronLeft size={32} />
           </button>
@@ -441,7 +455,7 @@ export default function RecipePage() {
               if (currentStepIndex === recipe.steps.length - 1) handleExitCooking();
               else setCurrentStepIndex(p => p + 1);
             }}
-            className="flex-grow py-5 bg-accent-color hover:bg-ink dark:hover:bg-page/20 text-page rounded-2xl font-bold text-2xl flex items-center justify-center gap-3 transition-all shadow-lg active:scale-95"
+            className="flex-grow py-5 bg-accent-color hover:opacity-80 text-page rounded-2xl font-bold text-2xl flex items-center justify-center gap-3 transition-all shadow-lg active:scale-95"
           >
             {currentStepIndex === recipe.steps.length - 1 ? (
               <><Check size={28} /> Finish</>
@@ -465,7 +479,7 @@ export default function RecipePage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
         {/* Left Column: Image & Primary Action */}
         <div className="lg:col-span-5 space-y-6">
-          <div className="rounded-[2.5rem] overflow-hidden shadow-2xl aspect-[3/4] relative border-4 border-parchment dark:border-surface-color">
+          <div className="rounded-[2.5rem] overflow-hidden shadow-2xl aspect-[3/4] relative border-4 border-border-color">
             <img src={recipe.image_url} alt={recipe.title} className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-ink/80 via-transparent to-transparent" />
             <div className="absolute bottom-6 left-6 right-6">
@@ -481,7 +495,7 @@ export default function RecipePage() {
 
           <button
             onClick={handleStartCooking}
-            className="w-full py-5 bg-accent-color hover:bg-ink dark:hover:bg-page/20 text-page rounded-3xl font-bold text-xl flex items-center justify-center gap-3 transition-all shadow-xl shadow-accent-color/20 hover:-translate-y-1 active:translate-y-0"
+            className="w-full py-5 bg-accent-color hover:opacity-80 text-page rounded-3xl font-bold text-xl flex items-center justify-center gap-3 transition-all shadow-xl shadow-accent-color/20 hover:-translate-y-1 active:translate-y-0"
           >
             <Play size={24} fill="currentColor" />
             Start Cooking Mode
@@ -493,7 +507,7 @@ export default function RecipePage() {
           <h1 className="text-5xl font-bold mb-4 text-text-primary tracking-tight leading-tight">{recipe.title}</h1>
           <p className="text-xl text-text-secondary/70 mb-10 leading-relaxed font-medium">{recipe.description}</p>
 
-          <div className="flex flex-wrap gap-8 p-8 bg-parchment/50 dark:bg-surface-color border border-border-color rounded-[2rem] mb-10">
+          <div className="flex flex-wrap gap-8 p-8 bg-surface-color border border-border-color rounded-[2rem] mb-10">
             <div className="flex items-center gap-4">
               <div className="p-4 bg-accent-color/10 text-accent-color rounded-2xl"><Clock size={24} /></div>
               <div>
@@ -513,12 +527,12 @@ export default function RecipePage() {
           <div className="mb-12">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 border-b border-border-color pb-6 gap-4">
               <h2 className="text-3xl font-bold text-text-primary tracking-tight">Ingredients</h2>
-              <div className="flex items-center gap-2 bg-parchment-deep/40 dark:bg-surface-color p-1.5 rounded-2xl border border-border-color">
+              <div className="flex items-center gap-2 bg-surface-color p-1.5 rounded-2xl border border-border-color">
                 {[1, 2, 3].map(m => (
                   <button
                     key={m}
                     onClick={() => { setServingsMultiplier(m); setIsCustomMultiplier(false); }}
-                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${servingsMultiplier === m && !isCustomMultiplier ? 'bg-ink text-page shadow-md dark:bg-page dark:text-ink' : 'text-text-secondary hover:bg-parchment dark:hover:bg-surface-color'}`}
+                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${servingsMultiplier === m && !isCustomMultiplier ? 'bg-text-primary text-bg-color shadow-md' : 'text-text-secondary hover:bg-border-color'}`}
                   >
                     {m}x
                   </button>
@@ -544,7 +558,7 @@ export default function RecipePage() {
               {recipe.steps.map((step, idx) => (
                 <div key={step.id} className="flex gap-6 group">
                   <div className="flex flex-col items-center">
-                    <div className="w-10 h-10 rounded-full bg-ink text-page flex items-center justify-center font-bold text-lg shrink-0 shadow-md group-hover:bg-accent-color transition-colors dark:bg-surface-color dark:text-text-primary">
+                    <div className="w-10 h-10 rounded-full bg-text-primary text-bg-color flex items-center justify-center font-bold text-lg shrink-0 shadow-md group-hover:bg-accent-color group-hover:text-page transition-colors">
                       {idx + 1}
                     </div>
                     {idx < recipe.steps.length - 1 && <div className="w-0.5 h-full bg-border-color my-2" />}

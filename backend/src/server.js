@@ -93,26 +93,26 @@ app.get('/', (req, res) => {
 app.use(notFound);
 app.use(errorHandler);
 
-// Start server
+// Start server — HTTP listener starts first so non-DB routes (TTS, assistant, health) always work.
 const startServer = async () => {
-    try {
-        // Test database connection
-        await pool.query('SELECT NOW()');
-        console.log('Database connection established');
-        
-        // Run migrations
-        await runMigrations();
+    // Always start listening first
+    app.listen(config.port, () => {
+        console.log(`[DEBUG] Server listening on port ${config.port}`);
+        console.log(`[DEBUG] Environment: ${config.nodeEnv}`);
+        console.log(`[DEBUG] API available at ${config.appUrl}/api`);
+        console.log(`[DEBUG] TTS endpoint: POST ${config.appUrl}/api/tts/generate`);
+        console.log(`[DEBUG] Assistant endpoint: POST ${config.appUrl}/api/assistant/command`);
+    });
 
-        // Start listening
-        app.listen(config.port, () => {
-            console.log(`[DEBUG] Server listening on port ${config.port}`);
-            console.log(`[DEBUG] Environment: ${config.nodeEnv}`);
-            console.log(`[DEBUG] API available at ${config.appUrl}/api`);
-        });
+    // DB connection is non-blocking — routes that don't need it still work
+    try {
+        await pool.query('SELECT NOW()');
+        console.log('[DB] Database connection established');
+        await runMigrations();
+        console.log('[DB] Migrations complete');
     } catch (error) {
-        console.error('Failed to start server:', error);
-        console.log('HINT: Ensure PostgreSQL is running. Run: docker-compose up -d postgres');
-        process.exit(1);
+        console.warn('[DB] WARNING: PostgreSQL unavailable — DB-backed routes will fail, but TTS/AI/health routes are still active.');
+        console.warn('[DB] To enable DB: run docker-compose up -d postgres');
     }
 };
 

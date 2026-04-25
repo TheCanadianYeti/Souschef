@@ -56,7 +56,7 @@ export default function RecipeCard({ recipe }) {
 
         <Link
           href={`/recipe/${recipe.id}`}
-          className="mt-4 block w-full py-2 px-4 bg-accent-color text-page hover:bg-ink dark:hover:bg-page/20 rounded-xl text-center font-semibold transition-colors duration-300"
+          className="mt-4 block w-full py-2 px-4 bg-accent-color text-page hover:opacity-80 rounded-xl text-center font-semibold transition-colors duration-300"
         >
           View Recipe
         </Link>

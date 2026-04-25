@@ -58,7 +58,7 @@ export default function Dashboard() {
           </div>
           <Link
             href="/capture"
-            className="flex items-center gap-2 px-5 py-2.5 bg-accent-color hover:bg-ink dark:hover:bg-page/20 text-page rounded-xl font-semibold transition-all shadow-md shadow-accent-color/10 active:scale-95"
+            className="flex items-center gap-2 px-5 py-2.5 bg-accent-color hover:opacity-80 text-page rounded-xl font-semibold transition-all shadow-md shadow-accent-color/10 active:scale-95"
           >
             <Plus size={20} />
             <span className="hidden sm:inline">Add Recipe</span>
@@ -71,7 +71,11 @@ export default function Dashboard() {
         <div className="flex flex-wrap gap-2 mb-10">
           <button
             onClick={() => setSelectedTag(null)}
-            className={`px-5 py-1.5 rounded-full text-sm font-bold transition-all border ${!selectedTag ? 'bg-ink text-page border-ink dark:bg-page dark:text-ink' : 'bg-parchment border-parchment-deep text-warm-dark hover:border-accent-color dark:bg-surface-color dark:text-text-secondary dark:border-border-color'}`}
+            className={`px-5 py-1.5 rounded-full text-sm font-bold transition-all border ${
+              !selectedTag
+                ? 'bg-text-primary text-bg-color border-text-primary'
+                : 'bg-surface-color border-border-color text-text-secondary hover:border-accent-color'
+            }`}
           >
             All
           </button>
@@ -79,7 +83,11 @@ export default function Dashboard() {
             <button
               key={tag}
               onClick={() => setSelectedTag(tag === selectedTag ? null : tag)}
-              className={`px-5 py-1.5 rounded-full text-sm font-bold transition-all border ${selectedTag === tag ? 'bg-accent-color text-page border-accent-color shadow-sm' : 'bg-parchment border-parchment-deep text-warm-dark hover:border-accent-color dark:bg-surface-color dark:text-text-secondary dark:border-border-color'}`}
+              className={`px-5 py-1.5 rounded-full text-sm font-bold transition-all border ${
+                selectedTag === tag
+                  ? 'bg-accent-color text-page border-accent-color shadow-sm'
+                  : 'bg-surface-color border-border-color text-text-secondary hover:border-accent-color'
+              }`}
             >
               {tag}
             </button>
@@ -91,7 +99,7 @@ export default function Dashboard() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {[1, 2, 3].map(i => (
-            <div key={i} className="h-80 rounded-2xl bg-parchment-deep dark:bg-surface-color animate-pulse opacity-20" />
+            <div key={i} className="h-80 rounded-2xl bg-surface-color border border-border-color animate-pulse opacity-40" />
           ))}
         </div>
       ) : (
