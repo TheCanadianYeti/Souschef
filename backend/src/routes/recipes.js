@@ -6,8 +6,28 @@ const { parseRecipeText } = require('../services/aiService');
 const { scrapeUrl } = require('../services/scraperService');
 const { authenticate, optionalAuth, AppError } = require('../middleware');
 const db = require('../database');
-
 const router = express.Router();
+
+const GET_SMART_IMAGE = (title = '', tags = []) => {
+    const combined = (title + ' ' + tags.join(' ')).toLowerCase();
+    const library = {
+        shrimp: 'https://images.unsplash.com/photo-1559737558-2f5a35f4523b',
+        chicken: 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d',
+        pasta: 'https://images.unsplash.com/photo-1473093226795-af9932fe5856',
+        steak: 'https://images.unsplash.com/photo-1546241072-48010ad28c2c',
+        salmon: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288',
+        salad: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd',
+        dessert: 'https://images.unsplash.com/photo-1563729784474-d77dbb933a9e',
+        breakfast: 'https://images.unsplash.com/photo-1525351484163-7529414344d8',
+        soup: 'https://images.unsplash.com/photo-1547592166-23ac45744acd',
+        burger: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd',
+        pizza: 'https://images.unsplash.com/photo-1513104890138-7c749659a591'
+    };
+    for (const [key, url] of Object.entries(library)) {
+        if (combined.includes(key)) return `${url}?auto=format&fit=crop&w=800&q=80`;
+    }
+    return 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80';
+};
 
 // Multer config for memory storage (since we upload buffer directly to GCP Vision)
 const upload = multer({ 
@@ -42,7 +62,7 @@ const saveRecipeToDb = async (parsedRecipe, userId) => {
                 parsedRecipe.prepTime || parsedRecipe.prep_time || 0,
                 parsedRecipe.difficulty || 'Medium',
                 parsedRecipe.tags || [],
-                parsedRecipe.image_url || `https://loremflickr.com/800/600/food,${encodeURIComponent((parsedRecipe.visualKeyword || parsedRecipe.title || 'cooking').replace(/\s+/g, '-'))}/all?sig=${Math.floor(Math.random() * 1000)}`
+                parsedRecipe.image_url || `${GET_SMART_IMAGE(parsedRecipe.title, parsedRecipe.tags)}&sig=${Date.now()}`
             ]
         );
 

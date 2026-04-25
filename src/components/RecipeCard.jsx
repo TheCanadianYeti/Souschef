@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Clock, Users, PlayCircle, Link as LinkIcon, Image as ImageIcon } from 'lucide-react';
 
 export default function RecipeCard({ recipe }) {
+  console.log(`[RecipeCard] Rendering ${recipe.title}`, { id: recipe.id, img: recipe.image_url });
   const getSourceIcon = () => {
     // White text always works against the dark image overlay
     switch (recipe.source_type) {
