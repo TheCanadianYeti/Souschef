@@ -27,9 +27,9 @@ export default function Dashboard() {
   }, []);
 
   const filteredRecipes = recipes.filter(recipe => {
-    const matchesSearch = recipe.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          recipe.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          recipe.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesSearch = recipe.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      recipe.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      recipe.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesTag = selectedTag ? recipe.tags.includes(selectedTag) : true;
     return matchesSearch && matchesTag;
   });
@@ -41,26 +41,24 @@ export default function Dashboard() {
       {/* Header Section */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
         <div>
-          <h1 className="text-4xl font-bold mb-2 text-ink tracking-tight">Your Recipes</h1>
-          <p className="text-warm-dark opacity-70">Manage and cook your favorite meals</p>
+          <h1 className="text-4xl font-bold mb-2 text-text-primary tracking-tight">Your Recipes</h1>
+          <p className="text-text-secondary opacity-70">Manage and cook your favorite meals</p>
         </div>
-        
+
         <div className="flex w-full md:w-auto gap-3">
           <div className="relative flex-grow md:w-72">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-warm-dark/40" size={18} />
-            <input 
-              type="text" 
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted" size={18} />
+            <input
+              type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search recipes..." 
-              /* Updated input to use Parchment theme */
-              className="w-full pl-11 pr-4 py-2.5 rounded-xl border border-parchment-deep bg-surface-color text-ink focus:outline-none focus:ring-2 focus:ring-brick/20 focus:border-brick transition-all placeholder:text-warm-dark/30"
+              placeholder="Search recipes..."
+              className="w-full pl-11 pr-4 py-2.5 rounded-xl border border-input-border bg-input-bg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-color/20 focus:border-accent-color transition-all placeholder:text-text-muted"
             />
           </div>
-          <Link 
+          <Link
             href="/capture"
-            /* Action button using Brick */
-            className="flex items-center gap-2 px-5 py-2.5 bg-brick hover:bg-ink text-page rounded-xl font-semibold transition-all shadow-md shadow-brick/10 active:scale-95"
+            className="flex items-center gap-2 px-5 py-2.5 bg-accent-color hover:bg-ink dark:hover:bg-page/20 text-page rounded-xl font-semibold transition-all shadow-md shadow-accent-color/10 active:scale-95"
           >
             <Plus size={20} />
             <span className="hidden sm:inline">Add Recipe</span>
@@ -71,17 +69,17 @@ export default function Dashboard() {
       {/* Filter Tags */}
       {!loading && allTags.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-10">
-          <button 
+          <button
             onClick={() => setSelectedTag(null)}
-            className={`px-5 py-1.5 rounded-full text-sm font-bold transition-all border ${!selectedTag ? 'bg-ink text-page border-ink' : 'bg-parchment border-parchment-deep text-warm-dark hover:border-brick'}`}
+            className={`px-5 py-1.5 rounded-full text-sm font-bold transition-all border ${!selectedTag ? 'bg-ink text-page border-ink dark:bg-page dark:text-ink' : 'bg-parchment border-parchment-deep text-warm-dark hover:border-accent-color dark:bg-surface-color dark:text-text-secondary dark:border-border-color'}`}
           >
             All
           </button>
           {allTags.map(tag => (
-            <button 
+            <button
               key={tag}
               onClick={() => setSelectedTag(tag === selectedTag ? null : tag)}
-              className={`px-5 py-1.5 rounded-full text-sm font-bold transition-all border ${selectedTag === tag ? 'bg-brick text-page border-brick shadow-sm' : 'bg-parchment border-parchment-deep text-warm-dark hover:border-brick'}`}
+              className={`px-5 py-1.5 rounded-full text-sm font-bold transition-all border ${selectedTag === tag ? 'bg-accent-color text-page border-accent-color shadow-sm' : 'bg-parchment border-parchment-deep text-warm-dark hover:border-accent-color dark:bg-surface-color dark:text-text-secondary dark:border-border-color'}`}
             >
               {tag}
             </button>
@@ -93,7 +91,7 @@ export default function Dashboard() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {[1, 2, 3].map(i => (
-            <div key={i} className="h-80 rounded-2xl bg-parchment-deep animate-pulse opacity-20" />
+            <div key={i} className="h-80 rounded-2xl bg-parchment-deep dark:bg-surface-color animate-pulse opacity-20" />
           ))}
         </div>
       ) : (
@@ -101,13 +99,13 @@ export default function Dashboard() {
           {filteredRecipes.map(recipe => (
             <RecipeCard key={recipe.id} recipe={recipe} />
           ))}
-          
+
           {/* Empty State */}
           {filteredRecipes.length === 0 && (
-            <div className="col-span-full py-20 text-center glass rounded-3xl border border-parchment-deep">
-              <Search className="mx-auto mb-4 text-parchment-deep" size={48} />
-              <p className="text-2xl font-bold text-ink mb-2">No recipes found</p>
-              <p className="text-warm-dark opacity-60">Try adjusting your search or filters.</p>
+            <div className="col-span-full py-20 text-center glass rounded-3xl border border-border-color">
+              <Search className="mx-auto mb-4 text-text-muted" size={48} />
+              <p className="text-2xl font-bold text-text-primary mb-2">No recipes found</p>
+              <p className="text-text-secondary opacity-60">Try adjusting your search or filters.</p>
             </div>
           )}
         </div>

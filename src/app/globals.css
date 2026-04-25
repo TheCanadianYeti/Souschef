@@ -1,42 +1,54 @@
 @import "tailwindcss";
 
 @font-face {
-  font-family: 'OpenDyslexic';
-  src: url('/fonts/OpenDyslexic-Regular.otf') format('opentype');
+  font-family: "OpenDyslexic";
+  src: url("/fonts/OpenDyslexic-Regular.otf") format("opentype");
   font-weight: normal;
   font-style: normal;
 }
 
 @theme {
   --font-sans: "Inter", system-ui, sans-serif;
-  
+
   /* Brand Palette */
-  --color-brick: #5A1915;
-  --color-page: #F7F2EB;
-  --color-parchment: #EDE5D8;
-  --color-parchment-deep: #D8CCBC;
-  --color-warm-dark: #2D2926;
-  --color-ink: #1A1614;
-  --color-aged-gold: #C8974A;
+  --color-brick: #5a1915;
+  --color-page: #f7f2eb;
+  --color-parchment: #ede5d8;
+  --color-parchment-deep: #d8ccbc;
+  --color-warm-dark: #2d2926;
+  --color-ink: #1a1614;
+  --color-aged-gold: #c8974a;
 }
 
 @layer base {
   :root {
     --bg-color: var(--color-page);
-    --surface-color: #FDFAF6; /* High contrast surface from your image */
+    --surface-color: #fdfaf6; /* High contrast surface from your image */
     --text-primary: var(--color-ink); /* #1A1614 - Headlines */
     --text-secondary: var(--color-warm-dark); /* #2D2926 - Body */
+    --text-muted: var(--color-warm-dark);
     --border-color: var(--color-parchment-deep);
     --accent-color: var(--color-brick);
+    --card-bg: rgba(253, 250, 246, 0.8);
+    --input-bg: var(--color-page);
+    --input-border: var(--color-parchment-deep);
+    --badge-bg: var(--color-parchment-deep);
+    --badge-text: var(--color-warm-dark);
   }
 
   .dark {
     --bg-color: var(--color-ink);
-    --surface-color: #241f1c; 
+    --surface-color: #241f1c;
     --text-primary: var(--color-page);
     --text-secondary: var(--color-parchment);
-    --border-color: var(--color-warm-dark);
+    --text-muted: var(--color-parchment-deep);
+    --border-color: #403830;
     --accent-color: var(--color-aged-gold);
+    --card-bg: rgba(36, 31, 28, 0.8);
+    --input-bg: #2a2420;
+    --input-border: #403830;
+    --badge-bg: #403830;
+    --badge-text: var(--color-parchment);
   }
 
   body {
@@ -48,8 +60,13 @@
   }
 
   /* Fix for the unreadable headlines */
-  h1, h2, h3, .text-ink {
-    color: var(--text-primary) !important;
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: var(--text-primary);
     font-weight: 700;
     letter-spacing: -0.02em;
   }
@@ -57,13 +74,25 @@
 
 @layer utilities {
   /* Accessibility Scaling */
-  .text-xs { font-size: calc(0.75rem * var(--text-scale, 1)) !important; }
-  .text-sm { font-size: calc(0.875rem * var(--text-scale, 1)) !important; }
-  .text-base { font-size: calc(1rem * var(--text-scale, 1)) !important; }
-  .text-lg { font-size: calc(1.125rem * var(--text-scale, 1)) !important; }
-  .text-xl { font-size: calc(1.25rem * var(--text-scale, 1)) !important; }
-  .text-2xl { font-size: calc(1.5rem * var(--text-scale, 1)) !important; }
-  
+  .text-xs {
+    font-size: calc(0.75rem * var(--text-scale, 1)) !important;
+  }
+  .text-sm {
+    font-size: calc(0.875rem * var(--text-scale, 1)) !important;
+  }
+  .text-base {
+    font-size: calc(1rem * var(--text-scale, 1)) !important;
+  }
+  .text-lg {
+    font-size: calc(1.125rem * var(--text-scale, 1)) !important;
+  }
+  .text-xl {
+    font-size: calc(1.25rem * var(--text-scale, 1)) !important;
+  }
+  .text-2xl {
+    font-size: calc(1.5rem * var(--text-scale, 1)) !important;
+  }
+
   /* Buttons & Chips (The "Boxes") */
   .btn-primary {
     background-color: var(--color-brick);
@@ -78,8 +107,9 @@
     color: var(--color-warm-dark); /* 7.1:1 contrast */
   }
 
-  .font-accessible, .font-accessible * {
-    font-family: 'OpenDyslexic', sans-serif !important;
+  .font-accessible,
+  .font-accessible * {
+    font-family: "OpenDyslexic", sans-serif !important;
     line-height: 1.8 !important;
   }
 }
