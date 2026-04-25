@@ -125,10 +125,12 @@ export default function Dashboard() {
 
           {/* Empty State */}
           {filteredRecipes.length === 0 && (
-            <div className="col-span-full py-20 text-center glass rounded-3xl border border-border-color">
-              <Search className="mx-auto mb-4 text-text-muted" size={48} />
-              <p className="text-2xl font-bold text-text-primary mb-2">No recipes found</p>
-              <p className="text-text-secondary opacity-60">Try adjusting your search or filters.</p>
+            <div className="col-span-full py-20 text-center glass rounded-[3rem] border-2 border-dashed border-border-color animate-in fade-in zoom-in-95 duration-500">
+              <Search className="mx-auto mb-6 text-accent-color opacity-50" size={64} />
+              <p className="text-3xl font-bold text-text-primary mb-3 tracking-tight">No recipes found</p>
+              <p className="text-xl text-text-secondary opacity-60 max-w-md mx-auto leading-relaxed">
+                Try adjusting your search or filters, or capture a new recipe to get started!
+              </p>
             </div>
           )}
         </div>

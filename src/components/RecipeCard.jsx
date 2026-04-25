@@ -5,7 +5,22 @@ import Link from 'next/link';
 import { Clock, Users, PlayCircle, Link as LinkIcon, Image as ImageIcon } from 'lucide-react';
 
 export default function RecipeCard({ recipe }) {
-  console.log(`[RecipeCard] Rendering ${recipe.title}`, { id: recipe.id, img: recipe.image_url });
+  const [imgSrc, setImgSrc] = React.useState(recipe.image_url);
+  const [retryCount, setRetryCount] = React.useState(0);
+
+  const handleImageError = () => {
+    if (retryCount === 0) {
+      // Fallback 1: Try first tag
+      const tag = recipe.tags && recipe.tags[0] ? recipe.tags[0] : 'cooking';
+      setImgSrc(`https://loremflickr.com/800/600/food,${encodeURIComponent(tag)}/all?sig=${recipe.id}`);
+      setRetryCount(1);
+    } else if (retryCount === 1) {
+      // Fallback 2: Try general food
+      setImgSrc(`https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80`);
+      setRetryCount(2);
+    }
+  };
+
   const getSourceIcon = () => {
     // White text always works against the dark image overlay
     switch (recipe.source_type) {
@@ -21,12 +36,9 @@ export default function RecipeCard({ recipe }) {
       {/* Fixed-height image */}
       <div className="relative h-48 w-full overflow-hidden shrink-0">
         <img
-          src={recipe.image_url || 'https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&w=800&q=80'}
+          src={imgSrc || 'https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&w=800&q=80'}
           alt={recipe.title}
-          onError={(e) => {
-            e.target.onerror = null; // Prevent infinite loop
-            e.target.src = 'https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&w=800&q=80';
-          }}
+          onError={handleImageError}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
         <div className="absolute top-3 right-3 bg-ink/50 dark:bg-bg-color/70 backdrop-blur-md rounded-full p-2">

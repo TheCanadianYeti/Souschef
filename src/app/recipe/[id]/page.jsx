@@ -4,7 +4,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
 import { fetchRecipeById, deleteLocalRecipe } from '../../../data/mockRecipes';
-import { Clock, Users, Play, Pause, ShoppingCart, ArrowLeft, Mic, ChevronRight, ChevronLeft, Check, ChefHat, Minimize2, Trash2, AlertCircle } from 'lucide-react';
+import { Clock, Users, Play, Pause, ShoppingCart, ArrowLeft, Mic, ChevronRight, ChevronLeft, Check, ChefHat, Minimize2, Trash2, AlertCircle, Link as LinkIcon } from 'lucide-react';
 import Link from 'next/link';
 
 const playChime = () => {
@@ -60,6 +60,23 @@ export default function RecipePage() {
   const [debugLog, setDebugLog] = useState([]);
   const [diag, setDiag] = useState({ backend: 'checking...', mic: 'unknown', speech: 'unknown' });
   const [recipeReady, setRecipeReady] = useState(false);
+  const [imgSrc, setImgSrc] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
+
+  const handleImageError = () => {
+    if (retryCount === 0 && recipe) {
+      const tag = recipe.tags && recipe.tags[0] ? recipe.tags[0] : 'cooking';
+      setImgSrc(`https://loremflickr.com/800/600/food,${encodeURIComponent(tag)}/all?sig=${recipe.id}`);
+      setRetryCount(1);
+    } else if (retryCount === 1) {
+      setImgSrc(`https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80`);
+      setRetryCount(2);
+    }
+  };
+
+  useEffect(() => {
+    if (recipe) setImgSrc(recipe.image_url);
+  }, [recipe]);
 
 
   // Refs so callbacks (onend, executeChefCommand) always see live values,
@@ -557,18 +574,15 @@ export default function RecipePage() {
         <div className="lg:col-span-5 space-y-6">
           <div className="rounded-[2.5rem] overflow-hidden shadow-2xl aspect-[3/4] relative border-4 border-border-color">
             <img 
-              src={recipe.image_url || 'https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&w=800&q=80'} 
+              src={imgSrc || 'https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&w=800&q=80'} 
               alt={recipe.title} 
-              onError={(e) => {
-                e.target.onerror = null;
-                e.target.src = 'https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&w=800&q=80';
-              }}
+              onError={handleImageError}
               className="w-full h-full object-cover" 
             />
             <div className="absolute inset-0 bg-gradient-to-t from-ink/80 via-transparent to-transparent" />
             <div className="absolute bottom-6 left-6 right-6">
               <div className="flex gap-2 flex-wrap">
-                {recipe.tags.map(tag => (
+                {recipe.tags && recipe.tags.map(tag => (
                   <span key={tag} className="text-xs font-bold px-3 py-1.5 bg-page/20 backdrop-blur-md text-page rounded-full uppercase tracking-widest">
                     {tag}
                   </span>
@@ -576,6 +590,19 @@ export default function RecipePage() {
               </div>
             </div>
           </div>
+
+          {/* Source Link Underneath Image */}
+          {recipe.source_url && (
+            <a 
+              href={recipe.source_url} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-3 py-5 px-6 bg-surface-color border-2 border-border-color rounded-[2rem] text-accent-color font-bold text-lg hover:border-accent-color hover:bg-accent-color/5 transition-all shadow-sm hover:-translate-y-1 active:translate-y-0"
+            >
+              <LinkIcon size={20} />
+              View Original Source
+            </a>
+          )}
 
           <div className="flex flex-col gap-3">
             <button
@@ -652,30 +679,37 @@ export default function RecipePage() {
           <div>
             <h2 className="text-3xl font-bold text-text-primary mb-8 border-b border-border-color pb-6 tracking-tight">Preparation</h2>
             <div className="space-y-8">
-              {recipe.steps.map((step, idx) => (
-                <div key={step.id} className="flex gap-6 group">
-                  <div className="flex flex-col items-center">
-                    <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg shrink-0 shadow-md group-hover:bg-accent-color transition-colors"
-                      style={{ backgroundColor: 'var(--text-primary)', color: 'var(--bg-color)' }}
-                    >
-                      {idx + 1}
-                    </div>
-                    {idx < recipe.steps.length - 1 && (
-                      <div className="w-0.5 flex-1 min-h-8 bg-border-color mt-2" />
-                    )}
-                  </div>
-                  <div className="pb-8 pt-1">
-                    <p className="text-xl text-text-primary leading-relaxed font-medium">{step.instruction}</p>
-                    {step.duration_seconds > 0 && (
-                      <div className="inline-flex items-center gap-2 mt-4 text-sm text-accent-color font-bold bg-accent-color/5 px-4 py-2 rounded-xl border border-accent-color/10">
-                        <Clock size={16} />
-                        {Math.floor(step.duration_seconds / 60)} min
+              {recipe.steps && recipe.steps.length > 0 ? (
+                recipe.steps.map((step, idx) => (
+                  <div key={step.id} className="flex gap-6 group">
+                    <div className="flex flex-col items-center">
+                      <div
+                        className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg shrink-0 shadow-md group-hover:bg-accent-color transition-colors"
+                        style={{ backgroundColor: 'var(--text-primary)', color: 'var(--bg-color)' }}
+                      >
+                        {idx + 1}
                       </div>
-                    )}
+                      {idx < recipe.steps.length - 1 && (
+                        <div className="w-0.5 flex-1 min-h-8 bg-border-color mt-2" />
+                      )}
+                    </div>
+                    <div className="pb-8 pt-1">
+                      <p className="text-xl text-text-primary leading-relaxed font-medium">{step.instruction}</p>
+                      {step.duration_seconds > 0 && (
+                        <div className="inline-flex items-center gap-2 mt-4 text-sm text-accent-color font-bold bg-accent-color/5 px-4 py-2 rounded-xl border border-accent-color/10">
+                          <Clock size={16} />
+                          {Math.floor(step.duration_seconds / 60)} min
+                        </div>
+                      )}
+                    </div>
                   </div>
+                ))
+              ) : (
+                <div className="p-10 bg-surface-color border-2 border-dashed border-border-color rounded-[2.5rem] text-center">
+                  <p className="text-2xl font-bold text-text-primary mb-2">No detailed steps found</p>
+                  <p className="text-xl text-text-secondary opacity-60 italic">Please refer to the original source for full cooking instructions.</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>
