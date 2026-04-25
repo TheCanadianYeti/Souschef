@@ -15,6 +15,9 @@ export default function RecipePage() {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isListening, setIsListening] = useState(false);
   const [voiceResponse, setVoiceResponse] = useState('');
+  const [servingsMultiplier, setServingsMultiplier] = useState(1);
+  const [customMultiplierInput, setCustomMultiplierInput] = useState('');
+  const [isCustomMultiplier, setIsCustomMultiplier] = useState(false);
 
   useEffect(() => {
     // TODO: BACKEND INTEGRATION
@@ -198,28 +201,73 @@ export default function RecipePage() {
               <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded-full"><Users size={20} className="text-primary-500" /></div>
               <div>
                 <p className="text-xs text-gray-500 uppercase tracking-wider">Servings</p>
-                <p className="font-bold">{recipe.servings}</p>
+                <p className="font-bold">{recipe.servings * servingsMultiplier}</p>
               </div>
             </div>
           </div>
 
           <div className="mb-10">
-            <div className="flex justify-between items-end mb-4 border-b border-gray-200 dark:border-gray-800 pb-4">
-              <h2 className="text-2xl font-bold">Ingredients</h2>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-4 border-b border-gray-200 dark:border-gray-800 pb-4 gap-4 sm:gap-0">
+              <div className="flex flex-col gap-2">
+                <h2 className="text-2xl font-bold">Ingredients</h2>
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <span className="text-gray-500 font-medium">Scale:</span>
+                  {[1, 1.5, 2, 3].map(m => (
+                    <button 
+                      key={m}
+                      onClick={() => {
+                        setServingsMultiplier(m);
+                        setIsCustomMultiplier(false);
+                      }}
+                      className={`px-3 py-1 rounded-full border transition-colors ${servingsMultiplier === m && !isCustomMultiplier ? 'bg-primary-500 border-primary-500 text-white font-medium shadow-sm' : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                    >
+                      {m}x
+                    </button>
+                  ))}
+                  <div className="relative flex items-center ml-1">
+                    <input 
+                      type="number"
+                      step="0.1"
+                      min="0.1"
+                      placeholder="Custom"
+                      value={isCustomMultiplier ? customMultiplierInput : ''}
+                      onChange={(e) => {
+                        setCustomMultiplierInput(e.target.value);
+                        setIsCustomMultiplier(true);
+                        const val = parseFloat(e.target.value);
+                        if (!isNaN(val) && val > 0) {
+                          setServingsMultiplier(val);
+                        }
+                      }}
+                      onFocus={() => setIsCustomMultiplier(true)}
+                      className={`w-28 px-3 py-1 rounded-full border bg-transparent text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 ${isCustomMultiplier ? 'border-primary-500 ring-1 ring-primary-500' : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300'}`}
+                    />
+                  </div>
+                </div>
+              </div>
               <button className="flex items-center gap-2 text-sm font-bold text-primary-500 hover:text-primary-600 bg-primary-50 dark:bg-primary-900/20 px-4 py-2 rounded-xl transition-colors">
                 <ShoppingCart size={18} />
                 Order via Instacart
               </button>
             </div>
             <ul className="space-y-3">
-              {recipe.ingredients.map(ing => (
-                <li key={ing.id} className="flex justify-between items-center p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                  <span className="text-gray-800 dark:text-gray-200">{ing.name}</span>
-                  <span className="font-medium text-gray-600 dark:text-gray-400">
-                    {ing.quantity} {ing.unit}
-                  </span>
-                </li>
-              ))}
+              {recipe.ingredients.map(ing => {
+                let displayQuantity = ing.quantity;
+                if (servingsMultiplier !== 1) {
+                  const parsed = parseFloat(ing.quantity);
+                  if (!isNaN(parsed)) {
+                    displayQuantity = (parsed * servingsMultiplier).toLocaleString(undefined, { maximumFractionDigits: 2 });
+                  }
+                }
+                return (
+                  <li key={ing.id} className="flex justify-between items-center p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                    <span className="text-gray-800 dark:text-gray-200">{ing.name}</span>
+                    <span className="font-medium text-gray-600 dark:text-gray-400">
+                      {displayQuantity} {ing.unit}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           </div>
 

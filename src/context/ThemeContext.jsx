@@ -5,13 +5,36 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
-  const [isDark, setIsDark] = useState(() => {
-    // Check local storage or system preference
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme) {
-      return savedTheme === 'dark';
+  const [profileImage, setProfileImage] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('profileImage') || null;
     }
-    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    return null;
+  });
+
+  const [isAccessibleFont, setIsAccessibleFont] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('accessibleFont') === 'true';
+    }
+    return false;
+  });
+
+  const [fontSizeMultiplier, setFontSizeMultiplier] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('fontSizeMultiplier');
+      return saved ? parseFloat(saved) : 1;
+    }
+    return 1;
+  });
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const savedTheme = localStorage.getItem('theme');
+      if (savedTheme) {
+        return savedTheme === 'dark';
+      }
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return false;
   });
 
   useEffect(() => {
@@ -26,12 +49,46 @@ export const ThemeProvider = ({ children }) => {
     }
   }, [isDark]);
 
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (isAccessibleFont) {
+      root.classList.add('font-accessible');
+      localStorage.setItem('accessibleFont', 'true');
+    } else {
+      root.classList.remove('font-accessible');
+      localStorage.setItem('accessibleFont', 'false');
+    }
+  }, [isAccessibleFont]);
+
+  useEffect(() => {
+    if (profileImage) {
+      localStorage.setItem('profileImage', profileImage);
+    } else {
+      localStorage.removeItem('profileImage');
+    }
+  }, [profileImage]);
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    root.style.setProperty('--text-scale', fontSizeMultiplier.toString());
+    localStorage.setItem('fontSizeMultiplier', fontSizeMultiplier.toString());
+  }, [fontSizeMultiplier]);
+
   const toggleTheme = () => {
     setIsDark((prev) => !prev);
   };
 
+  const toggleAccessibleFont = () => {
+    setIsAccessibleFont((prev) => !prev);
+  };
+
   return (
-    <ThemeContext.Provider value={{ isDark, toggleTheme }}>
+    <ThemeContext.Provider value={{ 
+      isDark, toggleTheme, 
+      isAccessibleFont, toggleAccessibleFont, 
+      profileImage, setProfileImage,
+      fontSizeMultiplier, setFontSizeMultiplier
+    }}>
       {children}
     </ThemeContext.Provider>
   );

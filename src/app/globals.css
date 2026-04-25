@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: 'OpenDyslexic';
+  src: url('/fonts/OpenDyslexic-Regular.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+
 @theme {
   --font-sans: "Inter", system-ui, sans-serif;
   
@@ -47,6 +54,25 @@
 }
 
 @layer utilities {
+  .text-xs { font-size: calc(0.75rem * var(--text-scale, 1)) !important; }
+  .text-sm { font-size: calc(0.875rem * var(--text-scale, 1)) !important; }
+  .text-base { font-size: calc(1rem * var(--text-scale, 1)) !important; }
+  .text-lg { font-size: calc(1.125rem * var(--text-scale, 1)) !important; }
+  .text-xl { font-size: calc(1.25rem * var(--text-scale, 1)) !important; }
+  .text-2xl { font-size: calc(1.5rem * var(--text-scale, 1)) !important; }
+  .text-3xl { font-size: calc(1.875rem * var(--text-scale, 1)) !important; }
+  .text-4xl { font-size: calc(2.25rem * var(--text-scale, 1)) !important; }
+  .text-5xl { font-size: calc(3rem * var(--text-scale, 1)) !important; }
+  .text-6xl { font-size: calc(3.75rem * var(--text-scale, 1)) !important; }
+  .text-7xl { font-size: calc(4.5rem * var(--text-scale, 1)) !important; }
+  
+  .font-accessible, .font-accessible * {
+    font-family: 'OpenDyslexic', 'Comic Sans MS', sans-serif !important;
+    letter-spacing: 0.05em !important;
+    word-spacing: 0.1em !important;
+    line-height: 1.6 !important;
+  }
+
   .glass {
     background: rgba(255, 255, 255, 0.7);
     backdrop-filter: blur(10px);
