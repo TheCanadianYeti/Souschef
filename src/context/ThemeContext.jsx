@@ -5,17 +5,17 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
+  /* ─── State Initialization ─────────────────────────────────────────────── */
+
+  const [mounted, setMounted] = useState(false);
+  
   const [profileImage, setProfileImage] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('profileImage') || null;
-    }
+    if (typeof window !== 'undefined') return localStorage.getItem('profileImage') || null;
     return null;
   });
 
   const [isAccessibleFont, setIsAccessibleFont] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('accessibleFont') === 'true';
-    }
+    if (typeof window !== 'undefined') return localStorage.getItem('accessibleFont') === 'true';
     return false;
   });
 
@@ -26,70 +26,111 @@ export const ThemeProvider = ({ children }) => {
     }
     return 1;
   });
+
   const [isDark, setIsDark] = useState(() => {
     if (typeof window !== 'undefined') {
       const savedTheme = localStorage.getItem('theme');
-      if (savedTheme) {
-        return savedTheme === 'dark';
-      }
+      if (savedTheme) return savedTheme === 'dark';
       return window.matchMedia('(prefers-color-scheme: dark)').matches;
     }
     return false;
   });
 
+  // New Accessibility States
+  const [isHighContrast, setIsHighContrast] = useState(() => 
+    typeof window !== 'undefined' ? localStorage.getItem('highContrast') === 'true' : false
+  );
+  const [isLowStimulation, setIsLowStimulation] = useState(() => 
+    typeof window !== 'undefined' ? localStorage.getItem('lowStimulation') === 'true' : false
+  );
+  const [colorblindMode, setColorblindMode] = useState(() => 
+    typeof window !== 'undefined' ? localStorage.getItem('colorblindMode') || 'none' : 'none'
+  );
+
+  /* ─── Effects (Syncing to DOM/Storage) ─────────────────────────────────── */
+
   useEffect(() => {
-    // Apply the 'dark' class to the HTML document root
-    const root = window.document.documentElement;
-    if (isDark) {
-      root.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      root.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  }, [isDark]);
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const root = window.document.documentElement;
-    if (isAccessibleFont) {
-      root.classList.add('font-accessible');
-      localStorage.setItem('accessibleFont', 'true');
-    } else {
-      root.classList.remove('font-accessible');
-      localStorage.setItem('accessibleFont', 'false');
-    }
-  }, [isAccessibleFont]);
+    
+    // Theme (Dark/Light)
+    isDark ? root.classList.add('dark') : root.classList.remove('dark');
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
 
-  useEffect(() => {
-    if (profileImage) {
-      localStorage.setItem('profileImage', profileImage);
-    } else {
-      localStorage.removeItem('profileImage');
-    }
-  }, [profileImage]);
-
-  useEffect(() => {
-    const root = window.document.documentElement;
+    // Font scaling
     root.style.setProperty('--text-scale', fontSizeMultiplier.toString());
     localStorage.setItem('fontSizeMultiplier', fontSizeMultiplier.toString());
-  }, [fontSizeMultiplier]);
 
-  const toggleTheme = () => {
-    setIsDark((prev) => !prev);
+    // Accessible Font
+    isAccessibleFont ? root.classList.add('font-accessible') : root.classList.remove('font-accessible');
+    localStorage.setItem('accessibleFont', isAccessibleFont);
+
+    // High Contrast
+    isHighContrast ? root.classList.add('high-contrast') : root.classList.remove('high-contrast');
+    localStorage.setItem('highContrast', isHighContrast);
+
+    // Low Stimulation
+    isLowStimulation ? root.classList.add('low-stimulation') : root.classList.remove('low-stimulation');
+    localStorage.setItem('lowStimulation', isLowStimulation);
+
+    // Colorblindness
+    root.classList.remove('protanopia', 'deuteranopia', 'tritanopia');
+    if (colorblindMode !== 'none') root.classList.add(colorblindMode);
+    localStorage.setItem('colorblindMode', colorblindMode);
+  }, [isDark, fontSizeMultiplier, isAccessibleFont, isHighContrast, isLowStimulation, colorblindMode]);
+
+  useEffect(() => {
+    if (profileImage) localStorage.setItem('profileImage', profileImage);
+    else localStorage.removeItem('profileImage');
+  }, [profileImage]);
+
+  /* ─── Handlers ────────────────────────────────────────────────────────── */
+
+  const toggleTheme = () => setIsDark((prev) => !prev);
+  const toggleAccessibleFont = () => setIsAccessibleFont((prev) => !prev);
+  const contextValue = {
+    mounted,
+    isDark,
+    setIsDark,
+    toggleTheme,
+    isAccessibleFont,
+    setIsAccessibleFont,
+    toggleAccessibleFont,
+    fontSizeMultiplier,
+    setFontSizeMultiplier,
+    profileImage,
+    setProfileImage,
+    isHighContrast,
+    setIsHighContrast,
+    isLowStimulation,
+    setIsLowStimulation,
+    colorblindMode,
+    setColorblindMode,
   };
 
-  const toggleAccessibleFont = () => {
-    setIsAccessibleFont((prev) => !prev);
-  };
+  /* ─── Render ───────────────────────────────────────────────────────────── */
 
   return (
-    <ThemeContext.Provider value={{ 
-      isDark, toggleTheme, 
-      isAccessibleFont, toggleAccessibleFont, 
-      profileImage, setProfileImage,
-      fontSizeMultiplier, setFontSizeMultiplier
-    }}>
+    <ThemeContext.Provider value={contextValue}>
       {children}
+    
+    {/* Only render the SVG on the client to avoid mismatch */}
+    {mounted && (
+      <svg style={{ display: 'none' }} aria-hidden="true">
+        <filter id="protanopia-filter">
+          <feColorMatrix values="0.567, 0.433, 0, 0, 0 0.558, 0.442, 0, 0, 0 0, 0.242, 0.758, 0, 0 0, 0, 0, 1, 0" />
+        </filter>
+        <filter id="deuteranopia-filter">
+          <feColorMatrix values="0.625, 0.375, 0, 0, 0 0.7, 0.3, 0, 0, 0 0, 0.3, 0.7, 0, 0 0, 0, 0, 1, 0" />
+        </filter>
+        <filter id="tritanopia-filter">
+          <feColorMatrix values="0.95, 0.05, 0, 0, 0 0, 0.433, 0.567, 0, 0 0, 0.475, 0.525, 0, 0 0, 0, 0, 1, 0" />
+        </filter>
+      </svg>
+    )}
     </ThemeContext.Provider>
   );
 };

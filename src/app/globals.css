@@ -67,6 +67,54 @@
     --badge-bg: #403830;
     --badge-text: #ede5d8;
   }
+  /* ─── High Contrast Mode ────────────────────────────────────────────────── */
+  /* Pure black/white or very high contrast versions of your brand palette */
+  .high-contrast {
+    --bg-color: #ffffff;
+    --surface-color: #ffffff;
+    --text-primary: #000000;
+    --text-secondary: #000000;
+    --text-muted: #000000;
+    --border-color: #000000;
+    --accent-color: #800000; /* Deepest red */
+    --card-bg: #ffffff;
+    --input-border: #000000;
+  }
+
+  .dark.high-contrast {
+    --bg-color: #000000;
+    --surface-color: #000000;
+    --text-primary: #ffffff;
+    --text-secondary: #ffffff;
+    --text-muted: #cccccc;
+    --border-color: #ffffff;
+    --accent-color: #ffcc00; /* Brightest gold */
+    --card-bg: #000000;
+    --input-border: #ffffff;
+  }
+
+  /* ─── Low Stimulation Mode ──────────────────────────────────────────────── */
+  /* Reduces saturation and removes distracting transitions/gradients */
+  .low-stimulation {
+    --accent-color: var(--text-secondary); /* Neutralize the red/gold */
+    filter: saturate(0.7);
+  }
+  .low-stimulation * {
+    transition: none !important; /* Stop all movement */
+    animation: none !important;
+  }
+
+  .low-stimulation .text-gradient {
+    background: none !important;
+    -webkit-text-fill-color: var(--text-primary) !important;
+    color: var(--text-primary) !important;
+  }
+
+  /* ─── Colorblind Filters ────────────────────────────────────────────────── */
+  /* Using SVG filters is more accurate, but CSS grayscale/hue-rotate is a solid baseline */
+  .protanopia { filter: url('#protanopia-filter') saturate(0.8); }
+  .deuteranopia { filter: url('#deuteranopia-filter') saturate(0.8); }
+  .tritanopia { filter: url('#tritanopia-filter') saturate(0.8); }
 
   html {
     background-color: var(--bg-color);

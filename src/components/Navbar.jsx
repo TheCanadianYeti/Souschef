@@ -35,7 +35,11 @@ export default function Navbar() {
                 <img
                   src={profileImage}
                   alt="Profile"
+<<<<<<< HEAD
                   className="h-8 w-8 rounded-full object-cover shadow-sm border-2 border-border-color"
+=======
+                  className="h-8 w-8 rounded-full object-cover shadow-sm border-2 border-parchment-deep"
+>>>>>>> cb811277b0ceab74e11f137c7bb6cdfa5b72a5a0
                 />
               ) : (
                 /* Swapped Purple Gradient for Brick/Gold Gradient */
