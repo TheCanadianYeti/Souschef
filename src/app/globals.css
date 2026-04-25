@@ -10,98 +10,76 @@
 @theme {
   --font-sans: "Inter", system-ui, sans-serif;
   
-  --color-primary-50: #f0f9ff;
-  --color-primary-500: #0ea5e9;
-  --color-primary-600: #0284c7;
-  --color-primary-700: #0369a1;
-
-  --color-dark-bg: #0f172a;
-  --color-dark-surface: #1e293b;
-  --color-dark-border: #334155;
-  
-  --color-light-bg: #f8fafc;
-  --color-light-surface: #ffffff;
-  --color-light-border: #e2e8f0;
+  /* Brand Palette */
+  --color-brick: #5A1915;
+  --color-page: #F7F2EB;
+  --color-parchment: #EDE5D8;
+  --color-parchment-deep: #D8CCBC;
+  --color-warm-dark: #2D2926;
+  --color-ink: #1A1614;
+  --color-aged-gold: #C8974A;
 }
 
 @layer base {
   :root {
-    --bg-color: var(--color-light-bg);
-    --surface-color: var(--color-light-surface);
-    --text-primary: #0f172a;
-    --text-secondary: #475569;
-    --border-color: var(--color-light-border);
-    --accent-color: var(--color-primary-500);
-    --accent-hover: var(--color-primary-600);
+    --bg-color: var(--color-page);
+    --surface-color: #FDFAF6; /* High contrast surface from your image */
+    --text-primary: var(--color-ink); /* #1A1614 - Headlines */
+    --text-secondary: var(--color-warm-dark); /* #2D2926 - Body */
+    --border-color: var(--color-parchment-deep);
+    --accent-color: var(--color-brick);
   }
 
   .dark {
-    --bg-color: var(--color-dark-bg);
-    --surface-color: var(--color-dark-surface);
-    --text-primary: #f8fafc;
-    --text-secondary: #94a3b8;
-    --border-color: var(--color-dark-border);
-    --accent-color: var(--color-primary-500);
-    --accent-hover: var(--color-primary-600);
+    --bg-color: var(--color-ink);
+    --surface-color: #241f1c; 
+    --text-primary: var(--color-page);
+    --text-secondary: var(--color-parchment);
+    --border-color: var(--color-warm-dark);
+    --accent-color: var(--color-aged-gold);
   }
 
   body {
     background-color: var(--bg-color);
-    color: var(--text-primary);
+    color: var(--text-secondary); /* Defaulting to Body Text color */
     font-family: var(--font-sans);
-    transition: background-color 0.3s ease, color 0.3s ease;
+    -webkit-font-smoothing: antialiased; /* Improves readability */
+    line-height: 1.6;
+  }
+
+  /* Fix for the unreadable headlines */
+  h1, h2, h3, .text-ink {
+    color: var(--text-primary) !important;
+    font-weight: 700;
+    letter-spacing: -0.02em;
   }
 }
 
 @layer utilities {
+  /* Accessibility Scaling */
   .text-xs { font-size: calc(0.75rem * var(--text-scale, 1)) !important; }
   .text-sm { font-size: calc(0.875rem * var(--text-scale, 1)) !important; }
   .text-base { font-size: calc(1rem * var(--text-scale, 1)) !important; }
   .text-lg { font-size: calc(1.125rem * var(--text-scale, 1)) !important; }
   .text-xl { font-size: calc(1.25rem * var(--text-scale, 1)) !important; }
   .text-2xl { font-size: calc(1.5rem * var(--text-scale, 1)) !important; }
-  .text-3xl { font-size: calc(1.875rem * var(--text-scale, 1)) !important; }
-  .text-4xl { font-size: calc(2.25rem * var(--text-scale, 1)) !important; }
-  .text-5xl { font-size: calc(3rem * var(--text-scale, 1)) !important; }
-  .text-6xl { font-size: calc(3.75rem * var(--text-scale, 1)) !important; }
-  .text-7xl { font-size: calc(4.5rem * var(--text-scale, 1)) !important; }
   
+  /* Buttons & Chips (The "Boxes") */
+  .btn-primary {
+    background-color: var(--color-brick);
+    color: var(--color-page); /* White/Cream text on brick for 8.4:1 contrast */
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    font-weight: 600;
+  }
+
+  .tag-parchment {
+    background-color: var(--color-parchment-deep);
+    color: var(--color-warm-dark); /* 7.1:1 contrast */
+  }
+
   .font-accessible, .font-accessible * {
-    font-family: 'OpenDyslexic', 'Comic Sans MS', sans-serif !important;
-    letter-spacing: 0.05em !important;
-    word-spacing: 0.1em !important;
-    line-height: 1.6 !important;
+    font-family: 'OpenDyslexic', sans-serif !important;
+    line-height: 1.8 !important;
   }
-
-  .glass {
-    background: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-  }
-  
-  .dark .glass {
-    background: rgba(30, 41, 59, 0.7);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-  }
-
-  .text-gradient {
-    background: linear-gradient(to right, var(--color-primary-500), #8b5cf6);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-}
-
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
 }
