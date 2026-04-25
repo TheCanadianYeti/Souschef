@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
 import { fetchRecipeById } from '../../../data/mockRecipes';
-import { Clock, Users, Play, ShoppingCart, ArrowLeft, Mic, ChevronRight, ChevronLeft, Check, ChefHat, Minimize2 } from 'lucide-react';
+import { Clock, Users, Play, Pause, ShoppingCart, ArrowLeft, Mic, ChevronRight, ChevronLeft, Check, ChefHat, Minimize2 } from 'lucide-react';
 import Link from 'next/link';
 
 const playChime = () => {
@@ -37,6 +37,7 @@ const playChime = () => {
 
 export default function RecipePage() {
   const { id } = useParams();
+  const [mounted, setMounted] = useState(false);
   const [recipe, setRecipe] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isCooking, setIsCooking] = useState(false);
@@ -50,80 +51,250 @@ export default function RecipePage() {
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [isTimerMinimized, setIsTimerMinimized] = useState(false);
   const [stepAudio, setStepAudio] = useState(null);
-
-  const playStepAudio = async (text) => {
-    try {
-      const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/tts/generate`, 
-        { text }, 
-        { responseType: 'blob' }
-      );
-      
-      const audioBlob = response.data;
-      const audioUrl = URL.createObjectURL(audioBlob);
-      
-      if (stepAudio) {
-        stepAudio.pause();
-      }
-      
-      const newAudio = new Audio(audioUrl);
-      setStepAudio(newAudio);
-      newAudio.play();
-    } catch (err) {
-      console.error('Failed to generate or play step audio:', err);
-    }
-  };
+  const [isAssistantEnabled, setIsAssistantEnabled] = useState(false);
+  const [speechRecognition, setSpeechRecognition] = useState(null);
+  const [isProcessingCommand, setIsProcessingCommand] = useState(false);
+  const [debugLog, setDebugLog] = useState([]);
+  const [diag, setDiag] = useState({ backend: 'checking...', mic: 'unknown', speech: 'unknown' });
 
   useEffect(() => {
-    if (isCooking && recipe && recipe.steps[currentStepIndex]) {
-      const instruction = recipe.steps[currentStepIndex].instruction;
-      playStepAudio(instruction);
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (mounted) {
+      const checkStatus = async () => {
+        const s = { 
+          speech: (window.SpeechRecognition || window.webkitSpeechRecognition) ? 'Supported' : 'NOT Supported',
+          mic: 'Unknown',
+          backend: 'checking...'
+        };
+        
+        try {
+          const res = await fetch('http://localhost:3001/api/health');
+          s.backend = res.ok ? 'Connected' : `Error: ${res.status}`;
+        } catch (e) {
+          s.backend = 'Disconnected';
+        }
+        
+        try {
+          const permission = await navigator.permissions.query({ name: 'microphone' });
+          s.mic = permission.state;
+        } catch (e) {
+          s.mic = 'Unknown';
+        }
+        
+        setDiag(s);
+      };
+      checkStatus();
     }
-  }, [currentStepIndex, isCooking, recipe]);
+  }, [mounted, isCooking]);
 
   useEffect(() => {
     const load = async () => {
-      const data = await fetchRecipeById(id);
-      setRecipe(data);
-      setLoading(false);
+      try {
+        const data = await fetchRecipeById(id);
+        if (data) setRecipe(data);
+      } catch (err) {
+        console.error('Failed to load recipe:', err);
+      } finally {
+        setLoading(false);
+      }
     };
     load();
   }, [id]);
 
-  const handleStartCooking = () => {
-    setIsCooking(true);
-    setCurrentStepIndex(0);
-  };
+  useEffect(() => {
+    let recognition = null;
+    if (typeof window !== 'undefined' && mounted) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = 'en-US';
 
-  const handleAskQuestion = () => {
-    setIsListening(true);
-    setVoiceResponse('');
-    setTimeout(() => {
-      setIsListening(false);
-      setVoiceResponse("For this step, you want the garlic to be fragrant but not browned, so about 30 seconds on medium heat.");
-    }, 2000);
-  };
+        recognition.onstart = () => {
+          setIsListening(true);
+          addLog('Microphone listening...');
+        };
+        recognition.onerror = (e) => {
+          addLog(`Mic error: ${e.error}`);
+          setIsListening(false);
+        };
+        recognition.onresult = (event) => {
+          const transcript = event.results[0][0].transcript.toLowerCase();
+          addLog(`Heard: "${transcript}"`);
+          if (transcript.includes('chef')) {
+            const cleanCommand = transcript
+              .replace(/hey chef|hi chef|chef/g, '')
+              .replace(/^[,.\s]+/, '')
+              .trim();
+            executeChefCommand(cleanCommand || 'repeat');
+          }
+        };
+        recognition.onend = () => {
+          setIsListening(false);
+          // Auto-restart if we aren't currently "Thinking..."
+          if (isCooking && isAssistantEnabled && !isProcessingCommand) {
+            try { recognition.start(); } catch(e) {}
+          }
+        };
+        setSpeechRecognition(recognition);
+      }
+    }
+    return () => {
+      if (recognition) try { recognition.stop(); } catch(e) {}
+    };
+  }, [isCooking, isAssistantEnabled, mounted]); // Removed isProcessingCommand to prevent internal restart loops
+
+  // Explicit effect to restart recognition when processing ends
+  useEffect(() => {
+    if (isCooking && isAssistantEnabled && !isProcessingCommand && speechRecognition && !isListening) {
+      try { speechRecognition.start(); } catch(e) {}
+    }
+  }, [isProcessingCommand, isCooking, isAssistantEnabled, speechRecognition, isListening]);
 
   useEffect(() => {
     if (isCooking && recipe && recipe.steps[currentStepIndex]) {
       const stepDuration = recipe.steps[currentStepIndex].duration_seconds || 0;
       setTimerLeft(stepDuration);
-      setIsTimerRunning(stepDuration > 0);
-      setIsTimerMinimized(false);
+      setIsTimerRunning(false);
     }
   }, [currentStepIndex, isCooking, recipe]);
 
   useEffect(() => {
     let interval;
     if (isTimerRunning && timerLeft > 0) {
-      interval = setInterval(() => {
-        setTimerLeft((prev) => prev - 1);
-      }, 1000);
+      interval = setInterval(() => setTimerLeft((prev) => prev - 1), 1000);
     } else if (timerLeft === 0 && isTimerRunning) {
       setIsTimerRunning(false);
       playChime();
     }
     return () => clearInterval(interval);
   }, [isTimerRunning, timerLeft]);
+
+  // Global stop helper
+  const stopAllAudio = () => {
+    if (stepAudio) {
+      stepAudio.pause();
+      stepAudio.currentTime = 0;
+    }
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+  };
+
+  const addLog = (msg) => {
+    console.log(`[Chef-Debug] ${msg}`);
+    setDebugLog(prev => [msg, ...prev].slice(0, 5));
+  };
+
+  const playStepAudio = async (text, onEndedCallback) => {
+    try {
+      const BASE_URL = 'http://localhost:3001/api';
+      addLog(`Requesting TTS...`);
+      const response = await fetch(`${BASE_URL}/tts/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      stopAllAudio();
+      const newAudio = new Audio(audioUrl);
+      if (onEndedCallback) newAudio.onended = onEndedCallback;
+      setStepAudio(newAudio);
+      await newAudio.play();
+      addLog('ElevenLabs Playing');
+    } catch (err) {
+      addLog(`TTS Failed, using Browser`);
+      stopAllAudio();
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        if (onEndedCallback) utterance.onend = onEndedCallback;
+        window.speechSynthesis.speak(utterance);
+      } else if (onEndedCallback) onEndedCallback();
+    }
+  };
+
+  const executeChefCommand = async (commandText) => {
+    addLog(`Chef heard: "${commandText}"`);
+    setIsProcessingCommand(true);
+    setVoiceResponse('Thinking...');
+    try {
+      const BASE_URL = 'http://localhost:3001/api';
+      const response = await fetch(`${BASE_URL}/assistant/command`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ commandText, recipeData: recipe, currentStepIndex })
+      });
+      
+      if (!response.ok) throw new Error(`Assistant Error: ${response.status}`);
+      
+      const data = await response.json();
+      addLog(`Action: ${data.action}`);
+      setVoiceResponse(data.replyText);
+
+      // Perform navigation IMMEDIATELY, don't wait for audio
+      if (data.action === 'NEXT_STEP' && currentStepIndex < recipe.steps.length - 1) {
+        setCurrentStepIndex(prev => prev + 1);
+      } else if (data.action === 'PREVIOUS_STEP' && currentStepIndex > 0) {
+        setCurrentStepIndex(prev => prev - 1);
+      }
+
+      // Play audio in background
+      playStepAudio(data.replyText, () => {
+        setIsProcessingCommand(false);
+      });
+      
+      // Safety unlock if audio fails or is silent
+      setTimeout(() => setIsProcessingCommand(false), 3000);
+
+    } catch (error) {
+      addLog(`Error: ${error.message}`);
+      setVoiceResponse("I'm sorry, I couldn't reach the AI. Try saying 'Next step' again.");
+      setIsProcessingCommand(false);
+    }
+  };
+
+  const handleStartCooking = async () => {
+    setIsAssistantEnabled(true);
+    setIsCooking(true);
+    setCurrentStepIndex(0);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach(track => track.stop());
+    } catch (err) {}
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (AudioContext) {
+      const ctx = new AudioContext();
+      if (ctx.state === 'suspended') ctx.resume();
+    }
+    if (recipe && recipe.steps[0]) playStepAudio(recipe.steps[0].instruction);
+  };
+
+  const handleToggleAssistant = () => {
+    const newState = !isAssistantEnabled;
+    setIsAssistantEnabled(newState);
+    if (!newState) {
+      if (speechRecognition) try { speechRecognition.stop(); } catch(e) {}
+      stopAllAudio();
+      setVoiceResponse('');
+    } else {
+      setVoiceResponse("Listening...");
+      playStepAudio("Hands-free mode active.");
+    }
+  };
+
+  const handleExitCooking = () => {
+    setIsCooking(false);
+    setIsAssistantEnabled(false);
+    stopAllAudio();
+  };
 
   if (loading) {
     return (
@@ -133,17 +304,33 @@ export default function RecipePage() {
     );
   }
 
-  if (!recipe) return <div className="container mx-auto px-4 py-8 text-center text-xl text-ink">Recipe not found.</div>;
+  if (!recipe) {
+    return (
+      <div className="container mx-auto px-4 py-8 text-center">
+        <h2 className="text-2xl font-bold text-ink mb-4">Recipe not found</h2>
+        <Link href="/" className="text-brick hover:underline">Back to Dashboard</Link>
+      </div>
+    );
+  }
 
   if (isCooking) {
     const currentStep = recipe.steps[currentStepIndex];
     const progress = ((currentStepIndex + 1) / recipe.steps.length) * 100;
 
     return (
-      <div className="fixed inset-0 z-50 bg-page flex flex-col animate-in fade-in duration-500">
-        {/* Cooking Header */}
+      <div className="fixed inset-0 z-50 bg-page flex flex-col animate-in fade-in duration-500 overflow-hidden">
+        {/* Diagnostic Overlay (Bottom Left) */}
+        <div className="fixed bottom-4 left-4 z-[60] bg-ink/90 text-[10px] text-page p-3 rounded-lg font-mono pointer-events-none opacity-50 hover:opacity-100 transition-opacity">
+          <div className="font-bold mb-1 border-b border-page/20 pb-1">SYSTEM DIAGNOSTICS</div>
+          <div>BACKEND: <span className={diag.backend === 'Connected' ? 'text-green-400' : 'text-red-400'}>{diag.backend}</span></div>
+          <div>SPEECH: <span className={diag.speech === 'Supported' ? 'text-green-400' : 'text-red-400'}>{diag.speech}</span></div>
+          <div>MIC: <span className={diag.mic === 'granted' ? 'text-green-400' : 'text-yellow-400'}>{diag.mic}</span></div>
+          <div className="mt-2 text-[8px] opacity-70">
+            {debugLog.map((log, i) => <div key={i}>• {log}</div>)}
+          </div>
+        </div>
         <div className="p-4 border-b border-parchment-deep flex items-center justify-between glass">
-          <button onClick={() => setIsCooking(false)} className="flex items-center gap-2 text-warm-dark hover:text-brick transition-colors font-semibold">
+          <button onClick={handleExitCooking} className="flex items-center gap-2 text-warm-dark hover:text-brick transition-colors font-semibold">
             <ArrowLeft size={20} />
             <span>Exit</span>
           </button>
@@ -160,9 +347,9 @@ export default function RecipePage() {
 
         {/* Main Cooking View */}
         <div className="flex-grow flex flex-col items-center justify-center p-6 sm:p-12 max-w-5xl mx-auto w-full relative">
-          <div className="absolute top-8 right-8 animate-pulse text-aged-gold hidden sm:flex items-center gap-2">
+          <div className={`absolute top-8 right-8 ${isAssistantEnabled ? 'animate-pulse text-brick' : 'text-warm-dark/30'} hidden sm:flex items-center gap-2 transition-all`}>
             <ChefHat size={20} />
-            <span className="text-sm font-bold uppercase">Hands-free active</span>
+            <span className="text-sm font-bold uppercase">{isAssistantEnabled ? 'Hands-free active' : 'Voice assistant off'}</span>
           </div>
 
           <h2 className="text-3xl sm:text-6xl font-bold leading-tight text-center mb-12 text-ink animate-in slide-in-from-bottom-6 duration-500">
@@ -170,22 +357,39 @@ export default function RecipePage() {
           </h2>
 
           {currentStep.duration_seconds > 0 && (
-            <div className="px-8 py-4 bg-gray-100 dark:bg-gray-800 rounded-full font-mono text-3xl mb-12 text-gray-800 dark:text-gray-200">
-              {Math.floor(currentStep.duration_seconds / 60)}:{(currentStep.duration_seconds % 60).toString().padStart(2, '0')}
+            <div className="flex flex-col items-center gap-6 mb-12">
+              <div className="px-12 py-6 bg-surface-color border-4 border-parchment-deep rounded-[2rem] font-mono text-6xl text-ink shadow-inner flex items-center justify-center min-w-[280px]">
+                {Math.floor(timerLeft / 60)}:{(timerLeft % 60).toString().padStart(2, '0')}
+              </div>
+              <button
+                onClick={() => setIsTimerRunning(!isTimerRunning)}
+                className="flex items-center gap-2 px-8 py-3 bg-brick text-page rounded-2xl shadow-lg hover:bg-ink transition-all active:scale-95 font-bold uppercase tracking-wider"
+              >
+                {isTimerRunning ? (
+                  <>
+                    <Pause size={24} fill="currentColor" />
+                    <span>Pause Timer</span>
+                  </>
+                ) : (
+                  <>
+                    <Play size={24} fill="currentColor" />
+                    <span>{timerLeft === currentStep.duration_seconds ? 'Start Timer' : 'Resume Timer'}</span>
+                  </>
+                )}
+              </button>
             </div>
           )}
 
           {/* Voice Q&A Section */}
           <div className="w-full max-w-md">
             <button
-              onClick={handleAskQuestion}
-              disabled={isListening}
-              className={`w-full py-5 rounded-3xl flex flex-col items-center justify-center gap-3 transition-all duration-300 shadow-xl ${isListening ? 'bg-brick text-page ring-4 ring-brick/20' : 'bg-surface-color border-2 border-parchment-deep text-ink hover:border-brick'}`}
+              onClick={handleToggleAssistant}
+              className={`w-full py-5 rounded-3xl flex flex-col items-center justify-center gap-3 transition-all duration-300 shadow-xl ${isAssistantEnabled ? 'bg-brick text-page ring-4 ring-brick/20' : 'bg-surface-color border-2 border-parchment-deep text-ink hover:border-brick'}`}
             >
-              <div className={`p-4 rounded-full ${isListening ? 'bg-page text-brick animate-bounce' : 'bg-parchment text-brick'}`}>
-                <Mic size={28} />
+              <div className={`p-4 rounded-full ${isAssistantEnabled ? 'bg-page text-brick animate-bounce' : 'bg-parchment text-brick'}`}>
+                {isAssistantEnabled ? <Mic size={28} /> : <Mic size={28} className="opacity-50" />}
               </div>
-              <span className="font-bold text-lg">{isListening ? 'Listening...' : 'Ask Souschef'}</span>
+              <span className="font-bold text-lg">{isAssistantEnabled ? 'Listening (Say "Hey Chef")' : 'Enable Hands-free'}</span>
             </button>
 
             {voiceResponse && (
@@ -209,7 +413,7 @@ export default function RecipePage() {
 
           <button
             onClick={() => {
-              if (currentStepIndex === recipe.steps.length - 1) setIsCooking(false);
+              if (currentStepIndex === recipe.steps.length - 1) handleExitCooking();
               else setCurrentStepIndex(p => p + 1);
             }}
             className="flex-grow py-5 bg-brick hover:bg-ink text-page rounded-2xl font-bold text-2xl flex items-center justify-center gap-3 transition-all shadow-lg active:scale-95"

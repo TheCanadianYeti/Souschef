@@ -7,6 +7,11 @@ import { ChefHat } from 'lucide-react';
 
 export default function Navbar() {
   const { profileImage } = useTheme();
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <nav className="sticky top-0 z-50 w-full bg-page/80 backdrop-blur-md border-b border-parchment-deep shadow-sm">
@@ -26,7 +31,7 @@ export default function Navbar() {
           <div className="flex items-center gap-4">
             {/* Focus ring updated to Gold */}
             <Link href="/profile" className="focus:outline-none focus:ring-2 focus:ring-aged-gold rounded-full transition-transform hover:scale-105">
-              {profileImage ? (
+              {mounted && profileImage ? (
                 <img 
                   src={profileImage} 
                   alt="Profile" 
