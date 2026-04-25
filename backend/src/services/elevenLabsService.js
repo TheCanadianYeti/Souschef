@@ -9,10 +9,12 @@ let client = null;
 
 const getClient = () => {
     if (!client) {
+        console.log('Initializing ElevenLabs client...');
         if (!process.env.ELEVENLABS_API_KEY || process.env.ELEVENLABS_API_KEY === 'your_elevenlabs_api_key_here') {
             console.warn("ELEVENLABS_API_KEY is not set or is a placeholder. TTS will be mocked.");
             return null;
         }
+        console.log('ElevenLabs API Key found (first 5 chars):', process.env.ELEVENLABS_API_KEY.substring(0, 5));
         client = new ElevenLabsClient({
             apiKey: process.env.ELEVENLABS_API_KEY
         });
@@ -26,6 +28,7 @@ const getClient = () => {
  * @returns {Buffer|null} - Audio buffer, or null if mocking
  */
 const generateSpeech = async (text) => {
+    console.log(`TTS request received for text: "${text.substring(0, 30)}..."`);
     const api = getClient();
     if (!api) {
         console.log(`[Mock TTS] Generating speech for: "${text}"`);
@@ -34,23 +37,29 @@ const generateSpeech = async (text) => {
     }
 
     try {
-        // Requested voice ID
         const voiceId = "wWWn96OtTHu1sn8SRGEr"; 
+        console.log(`[ElevenLabs] Using voice: ${voiceId} with multilingual-v2`);
 
         const audioStream = await api.textToSpeech.convert(voiceId, {
             text: text,
-            model_id: "eleven_turbo_v2_5", // Fast, conversational model
+            model_id: "eleven_multilingual_v2", // Most compatible model
             output_format: "mp3_44100_128",
         });
 
-        // Convert Node.js readable stream to buffer
         const chunks = [];
         for await (const chunk of audioStream) {
             chunks.push(chunk);
         }
         return Buffer.concat(chunks);
     } catch (error) {
-        console.error("ElevenLabs TTS Error:", error);
+        console.error("--- ELEVENLABS API ERROR ---");
+        if (error.status === 402) {
+            console.error("Status: 402 (Quota Exceeded / Subscription Required)");
+            console.error("Hale's voice may require a paid ElevenLabs tier or more credits.");
+        } else {
+            console.error(`Status: ${error.status || 'Unknown'}`);
+            console.error(`Message: ${error.message}`);
+        }
         throw error;
     }
 };

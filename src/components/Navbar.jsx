@@ -7,6 +7,11 @@ import { ChefHat } from 'lucide-react';
 
 export default function Navbar() {
   const { profileImage } = useTheme();
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <nav className="sticky top-0 z-50 w-full bg-page/80 backdrop-blur-md border-b border-border-color shadow-sm">
@@ -26,11 +31,19 @@ export default function Navbar() {
           <div className="flex items-center gap-4">
             {/* Focus ring updated to Gold */}
             <Link href="/profile" className="focus:outline-none focus:ring-2 focus:ring-aged-gold rounded-full transition-transform hover:scale-105">
+<<<<<<< HEAD
+              {mounted && profileImage ? (
+                <img 
+                  src={profileImage} 
+                  alt="Profile" 
+                  className="h-8 w-8 rounded-full object-cover shadow-sm border-2 border-parchment-deep" 
+=======
               {profileImage ? (
                 <img
                   src={profileImage}
                   alt="Profile"
                   className="h-8 w-8 rounded-full object-cover shadow-sm border-2 border-border-color"
+>>>>>>> ef011094c43d37786beb8feb7d585615ce218375
                 />
               ) : (
                 /* Swapped Purple Gradient for Brick/Gold Gradient */

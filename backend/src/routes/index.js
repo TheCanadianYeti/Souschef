@@ -4,6 +4,7 @@ const recipeRoutes = require('./recipes');
 const cookingRoutes = require('./cooking');
 const groceryRoutes = require('./grocery');
 const ttsRoutes = require('./tts');
+const assistantRoutes = require('./assistant');
 
 const router = express.Router();
 
@@ -23,5 +24,6 @@ router.use('/recipes', recipeRoutes);
 router.use('/cook', cookingRoutes);
 router.use('/grocery', groceryRoutes);
 router.use('/tts', ttsRoutes);
+router.use('/assistant', assistantRoutes);
 
 module.exports = router;
