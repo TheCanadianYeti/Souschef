@@ -1,171 +1,60 @@
-# souschef Backend API
+# Souschef
 
-REST API backend for the souschef - AI-Powered Recipe Capture & Cooking Assistant application.
+Your recipe library, standardized. Your kitchen, hands-free.
+
+Recipes come from everywhere: YouTube videos, food blogs, handwritten cards, screenshots, your aunt's email. They all look different, use different units, and live in different places. Souschef pulls them into one consistent format so you can actually cook from them.
+
+## Features
+
+### One format for everything
+
+Every recipe you add, regardless of source, gets structured the same way: a clean ingredient list with standardized units, numbered steps, prep time, cook time, serving size, and difficulty. No more hunting through a blog post for the actual instructions. No more decoding someone else's shorthand.
+
+### Hands-free cooking mode
+
+When your hands are covered in flour or raw chicken, touching your phone is not an option. Souschef reads each cooking step aloud so you can keep your hands where they belong. Use voice commands to advance steps, repeat instructions, or pause a timer without touching anything.
+
+### Built-in timers per step
+
+Each cooking step with a time component has its own timer. You do not need to juggle a separate timer app or try to remember how long something has been on the heat.
+
+### Add recipes from anywhere
+
+- Paste a URL from any recipe site
+- Upload a photo of a recipe card or cookbook page
+- Record a cooking video and Souschef extracts the recipe from it
+- Type or paste raw text
+
+Whatever format it starts in, it ends up in the same clean structure.
 
 ## Tech Stack
 
-- **Runtime:** Node.js 18+
-- **Framework:** Express.js
-- **Database:** PostgreSQL 14+
-- **Cache:** Redis (optional, for rate limiting)
-- **Authentication:** JWT (with optional Auth0 integration)
+- Next.js 14
+- React 18
+- Tailwind CSS v4
+- TypeScript
 
-## Quick Start
+The current version is a frontend prototype. All recipe data is mocked and API calls are simulated with `setTimeout`. Backend integration points are marked throughout the source with `// TODO: BACKEND INTEGRATION`.
 
-### Prerequisites
-
-- Node.js 18 or higher
-- PostgreSQL 14 or higher
-- Redis (optional)
-
-### Installation
-
-1. **Clone and navigate to backend directory:**
-   ```bash
-   cd backend
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-
-3. **Configure environment:**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
-
-4. **Set up PostgreSQL database:**
-   ```sql
-   CREATE DATABASE souschef_db;
-   CREATE USER souschef_user WITH PASSWORD 'your_secure_password';
-   GRANT ALL PRIVILEGES ON DATABASE souschef_db TO souschef_user;
-   ```
-
-5. **Run migrations (automatic on first start):**
-   ```bash
-   npm start
-   ```
-
-### Development
+## Getting Started
 
 ```bash
+git clone https://github.com/TheCanadianYeti/Souschef.git
+cd Souschef
+npm install
 npm run dev
 ```
 
-The server will start on `http://localhost:3001` with auto-reload on file changes.
+Open http://localhost:3000.
 
-## Environment Variables
+## Project Structure
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `PORT` | Server port | `3001` |
-| `NODE_ENV` | Environment | `development` |
-| `DB_HOST` | PostgreSQL host | `localhost` |
-| `DB_PORT` | PostgreSQL port | `5432` |
-| `DB_NAME` | Database name | `souschef_db` |
-| `DB_USER` | Database user | `souschef_user` |
-| `DB_PASSWORD` | Database password | - |
-| `JWT_SECRET` | JWT signing secret | - |
-| `JWT_EXPIRES_IN` | JWT expiration | `7d` |
-| `REDIS_HOST` | Redis host | `localhost` |
-| `REDIS_PORT` | Redis port | `6379` |
-| `CLAUDE_API_KEY` | Anthropic Claude API key | - |
-| `ELEVENLABS_API_KEY` | ElevenLabs API key | - |
-| `INSTACART_API_KEY` | Instacart API key | - |
+```
+src/          React components and pages
+public/fonts/ Custom fonts
+extract.py    Content extraction utility
+```
 
-## API Endpoints
+## Backend
 
-### Authentication
-
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| POST | `/api/auth/signup` | Register new user | No |
-| POST | `/api/auth/login` | User login | No |
-| POST | `/api/auth/refresh` | Refresh JWT token | No |
-| GET | `/api/auth/me` | Get current user | Yes |
-| PUT | `/api/auth/profile` | Update user profile | Yes |
-| DELETE | `/api/auth/account` | Delete user account | Yes |
-
-### Recipes
-
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| GET | `/api/recipes` | Get user's recipes | Yes |
-| GET | `/api/recipes/public` | Get public recipes | No |
-| GET | `/api/recipes/:id` | Get recipe by ID | No* |
-| POST | `/api/recipes` | Create new recipe | Yes |
-| PUT | `/api/recipes/:id` | Update recipe | Yes |
-| DELETE | `/api/recipes/:id` | Delete recipe | Yes |
-| POST | `/api/recipes/:id/fork` | Fork a recipe | Yes |
-| POST | `/api/recipes/capture` | Upload video/image for AI parsing | Yes |
-| POST | `/api/recipes/from-url` | Extract recipe from URL | Yes |
-
-*Public recipes or owned by authenticated user
-
-### Cooking
-
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| POST | `/api/cook/:recipeId/start` | Start cooking session | Yes |
-| GET | `/api/cook/session/:sessionId` | Get session state | Yes |
-| PATCH | `/api/cook/session/:sessionId/step` | Update current step | Yes |
-| POST | `/api/cook/:recipeId/ask` | Ask AI question during cooking | Yes |
-| POST | `/api/cook/session/:sessionId/complete` | Complete cooking session | Yes |
-| GET | `/api/cook/history` | Get cooking history | Yes |
-| GET | `/api/cook/session/:sessionId/timers` | Get active timers | Yes |
-
-### Grocery
-
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| GET | `/api/grocery/list` | Get grocery list | Yes |
-| POST | `/api/grocery/list` | Create grocery list | Yes |
-| PUT | `/api/grocery/list/:listId` | Update list name | Yes |
-| DELETE | `/api/grocery/list/:listId` | Delete grocery list | Yes |
-| POST | `/api/grocery/add-from-recipe` | Add recipe ingredients | Yes |
-| POST | `/api/grocery/list/:listId/items` | Add custom item | Yes |
-| PATCH | `/api/grocery/items/:itemId` | Update item | Yes |
-| DELETE | `/api/grocery/items/:itemId` | Remove item | Yes |
-| POST | `/api/grocery/clear-checked` | Clear checked items | Yes |
-| POST | `/api/grocery/checkout` | Generate Instacart link | Yes |
-| GET | `/api/grocery/instacart/products` | Search Instacart products | Yes |
-
-## Database Schema
-
-### Tables
-
-- **users** - User accounts and profiles
-- **refresh_tokens** - JWT refresh tokens
-- **recipes** - Recipe metadata
-- **ingredients** - Recipe ingredients
-- **cooking_steps** - Recipe cooking steps
-- **recipe_collections** - User recipe collections
-- **recipe_collection_items** - Collection-recipe associations
-- **recipe_ratings** - User recipe ratings
-- **cooking_sessions** - Active/completed cooking sessions
-- **grocery_lists** - User grocery lists
-- **grocery_list_items** - Grocery list items
-- **recipe_version_history** - Recipe change history
-
-## AI Integration (Pending)
-
-The following endpoints are prepared for AI integration:
-
-### Claude API (Recipe Parsing)
-- `POST /api/recipes/capture` - Parse video/image uploads
-- `POST /api/recipes/from-url` - Extract recipes from URLs
-- `POST /api/cook/:recipeId/ask` - AI-powered cooking Q&A
-
-### ElevenLabs API (Voice)
-- Voice narration for cooking steps
-- Text-to-speech for AI responses
-
-### Instacart API (Grocery)
-- `POST /api/grocery/checkout` - Pre-filled cart generation
-- `GET /api/grocery/instacart/products` - Product search
-
-## License
-
-MIT
+The backend is implemented separately. See [`/backend`](./backend) for its own README and setup instructions.
