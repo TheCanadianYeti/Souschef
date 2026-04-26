@@ -16,17 +16,18 @@ const generateSpeech = async (text) => {
     }
 
     try {
-        const preferredVoiceId = "wWWn96OtTHu1sn8SRGEr";
+        // Rachel (Standard voice) is usually available on all plans
+        const preferredVoiceId = "21m00Tcm4TlvDq8ikWAM";
         let voiceId = preferredVoiceId;
 
-        console.log(`[ElevenLabs] Attempting to use preferred voice: ${voiceId}`);
+        console.log(`[ElevenLabs] Attempting to use standard voice: ${voiceId}`);
         
         const generate = async (vId) => {
             return await axios.post(
                 `https://api.elevenlabs.io/v1/text-to-speech/${vId}/stream`,
                 {
                     text: text,
-                    model_id: "eleven_multilingual_v2",
+                    model_id: "eleven_monolingual_v1", // Faster and more compatible with basic plans
                     voice_settings: {
                         stability: 0.5,
                         similarity_boost: 0.75
@@ -86,6 +87,11 @@ const generateSpeech = async (text) => {
             }
             
             console.error('Error Body:', errorMsg);
+            
+            // Special handling for unusual activity detection
+            if (errorMsg.includes('unusual_activity')) {
+                console.error("CRITICAL: ElevenLabs has detected unusual activity and blocked this request. Your API key or IP may be restricted.");
+            }
 
             if (status === 401) {
                 console.error("Authentication failed. Check your ELEVENLABS_API_KEY.");

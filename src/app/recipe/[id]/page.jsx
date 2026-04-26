@@ -91,6 +91,7 @@ export default function RecipePage() {
   const recognitionRef = useRef(null);
   const currentAudioRef = useRef(null);
   const ttsAbortControllerRef = useRef(null);
+  const lastRequestTimestampRef = useRef(0);
   const isSpeakingRef = useRef(false);
 
   // Keep refs in sync with state
@@ -259,6 +260,9 @@ export default function RecipePage() {
   };
 
   const playStepAudio = async (text, onEndedCallback) => {
+    const timestamp = Date.now();
+    lastRequestTimestampRef.current = timestamp;
+
     // 1. Cancel any pending fetch
     if (ttsAbortControllerRef.current) {
       ttsAbortControllerRef.current.abort();
@@ -271,7 +275,7 @@ export default function RecipePage() {
     if (currentAudioRef.current) {
       try {
         currentAudioRef.current.pause();
-        currentAudioRef.current.src = ""; // Force stop loading
+        currentAudioRef.current.src = "";
       } catch (e) {}
       currentAudioRef.current = null;
     }
@@ -295,17 +299,20 @@ export default function RecipePage() {
 
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
+      // Check if this is still the latest request
+      if (lastRequestTimestampRef.current !== timestamp) return;
+
       const audioBlob = await response.blob();
       const audioUrl = URL.createObjectURL(audioBlob);
       const audio = new Audio(audioUrl);
       currentAudioRef.current = audio;
       
       audio.onended = () => {
-        isSpeakingRef.current = false;
+        if (lastRequestTimestampRef.current === timestamp) isSpeakingRef.current = false;
         if (onEndedCallback) onEndedCallback();
       };
       audio.onerror = () => {
-        isSpeakingRef.current = false;
+        if (lastRequestTimestampRef.current === timestamp) isSpeakingRef.current = false;
         if (onEndedCallback) onEndedCallback();
       };
 
@@ -316,16 +323,35 @@ export default function RecipePage() {
         addLog('TTS Request Aborted');
         return;
       }
+      
+      // If this is not the latest request, don't fallback (the newer request will handle it)
+      if (lastRequestTimestampRef.current !== timestamp) return;
+
       addLog(`TTS Failed, using Browser`);
       if (typeof window !== 'undefined' && window.speechSynthesis) {
+        // Definitively cancel any existing browser speech before starting new one
+        window.speechSynthesis.cancel();
+        
         const utterance = new SpeechSynthesisUtterance(text);
+        
+        // Try to find a better voice (e.g. Google or Microsoft natural sounding ones)
+        const voices = window.speechSynthesis.getVoices();
+        const preferredVoice = voices.find(v => 
+          (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Premium')) && 
+          v.lang.startsWith('en')
+        ) || voices.find(v => v.lang.startsWith('en'));
+        
+        if (preferredVoice) utterance.voice = preferredVoice;
+        utterance.rate = 0.95; // Slightly slower sounds more natural
+        utterance.pitch = 1.0;
+        
         utterance.onstart = () => { isSpeakingRef.current = true; };
         utterance.onend = () => { 
-          isSpeakingRef.current = false;
+          if (lastRequestTimestampRef.current === timestamp) isSpeakingRef.current = false;
           if (onEndedCallback) onEndedCallback();
         };
         utterance.onerror = () => {
-          isSpeakingRef.current = false;
+          if (lastRequestTimestampRef.current === timestamp) isSpeakingRef.current = false;
           if (onEndedCallback) onEndedCallback();
         };
         window.speechSynthesis.speak(utterance);
