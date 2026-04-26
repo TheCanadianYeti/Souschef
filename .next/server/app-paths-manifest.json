@@ -1,5 +1,6 @@
 {
-  "/page": "app/page.js",
-  "/capture/page": "app/capture/page.js",
-  "/profile/page": "app/profile/page.js"
+  "/_not-found/page": "app/_not-found/page.js",
+  "/profile/page": "app/profile/page.js",
+  "/icon.svg/route": "app/icon.svg/route.js",
+  "/page": "app/page.js"
 }
