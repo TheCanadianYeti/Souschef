@@ -34,6 +34,12 @@ const getBaseUrl = () => {
   let url = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
   // Remove trailing slash if present
   url = url.replace(/\/$/, '');
+  
+  // Force HTTPS for non-local URLs to prevent Mixed Content blocks
+  if (!url.includes('localhost') && url.startsWith('http:')) {
+    url = url.replace('http:', 'https:');
+  }
+
   // Ensure /api is present if not local and not already there
   if (!url.includes('localhost') && !url.endsWith('/api')) {
     url = `${url}/api`;

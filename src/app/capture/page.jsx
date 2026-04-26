@@ -13,6 +13,12 @@ const getBaseUrl = () => {
   let url = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
   // Remove trailing slash if present
   url = url.replace(/\/$/, '');
+  
+  // Force HTTPS for non-local URLs to prevent Mixed Content blocks
+  if (!url.includes('localhost') && url.startsWith('http:')) {
+    url = url.replace('http:', 'https:');
+  }
+
   // Ensure /api is present if not local and not already there
   if (!url.includes('localhost') && !url.endsWith('/api')) {
     url = `${url}/api`;
@@ -40,6 +46,10 @@ export default function CapturePage() {
     setError('');
 
     try {
+      if (!API_BASE_URL || API_BASE_URL.includes('localhost')) {
+        console.error('CRITICAL: API_BASE_URL is not set to Railway! Current:', API_BASE_URL);
+      }
+      console.log(`[DEBUG] Calling API: ${API_BASE_URL}/recipes/from-url`);
       const response = await axios.post(`${API_BASE_URL}/recipes/from-url`, { url });
 
       const newRecipe = response.data.data;
@@ -73,6 +83,7 @@ export default function CapturePage() {
     formData.append('photo', file);
 
     try {
+      console.log(`[DEBUG] Calling API: ${API_BASE_URL}/recipes/capture`);
       const response = await axios.post(`${API_BASE_URL}/recipes/capture`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
