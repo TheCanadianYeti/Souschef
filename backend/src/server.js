@@ -14,22 +14,12 @@ const { errorHandler, notFound } = require('./middleware');
 
 const app = express();
 
-// CORS configuration - Relaxed for hackathon deployment
+// CORS configuration - Fully open for hackathon deployment
 app.use(cors({
-    origin: (origin, callback) => {
-        // Allow if: no origin (local/mobile), matches CORS_ORIGINS, or for hackathon, just allow all while debugging
-        const allowedOrigins = config.cors.origins;
-        if (!origin || allowedOrigins.includes('*') || allowedOrigins.includes(origin) || origin.includes('vercel.app')) {
-            callback(null, true);
-        } else {
-            console.warn(`[CORS] Blocked request from origin: ${origin}`);
-            // Still allow vercel previews and other common hackathon patterns
-            callback(null, true); 
-        }
-    },
+    origin: true, // Dynamically allow whatever origin is making the request
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
 }));
 
 // Security middleware - Relaxed for local hackathon development
@@ -110,13 +100,13 @@ app.use(errorHandler);
 
 // Start server — HTTP listener starts first so non-DB routes (TTS, assistant, health) always work.
 const startServer = async () => {
-    // Always start listening first
-    app.listen(config.port, () => {
-        console.log(`[DEBUG] Server listening on port ${config.port}`);
+    // Always start listening first on 0.0.0.0 for cloud connectivity
+    const server = app.listen(config.port, '0.0.0.0', () => {
+        const addr = server.address();
+        const bind = typeof addr === 'string' ? `pipe ${addr}` : `port ${addr.port}`;
+        console.log(`[DEBUG] Server listening on 0.0.0.0:${config.port} (${bind})`);
         console.log(`[DEBUG] Environment: ${config.nodeEnv}`);
         console.log(`[DEBUG] API available at ${config.appUrl}/api`);
-        console.log(`[DEBUG] TTS endpoint: POST ${config.appUrl}/api/tts/generate`);
-        console.log(`[DEBUG] Assistant endpoint: POST ${config.appUrl}/api/assistant/command`);
     });
 
     // DB connection is non-blocking — routes that don't need it still work
