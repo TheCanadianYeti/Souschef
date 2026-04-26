@@ -14,12 +14,15 @@ const { errorHandler, notFound } = require('./middleware');
 
 const app = express();
 
-// CORS configuration - Fully open for hackathon deployment
+// CORS configuration - The "Hammer" fix for hackathon deployment
 app.use(cors({
-    origin: true, // Dynamically allow whatever origin is making the request
+    origin: (origin, callback) => {
+        // For hackathons: always allow everything and echo back the origin
+        callback(null, true);
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
 }));
 
 // Security middleware - Relaxed for local hackathon development
