@@ -16,42 +16,57 @@ const generateSpeech = async (text) => {
     }
 
     try {
-        // 1. Fetch available voices to ensure we use one that works with your current plan
-        console.log('[ElevenLabs] Fetching available voices...');
-        const voicesResponse = await axios.get('https://api.elevenlabs.io/v1/voices', {
-            headers: { 'xi-api-key': apiKey }
-        });
+        const preferredVoiceId = "wWWn96OtTHu1sn8SRGEr";
+        let voiceId = preferredVoiceId;
 
-        if (!voicesResponse.data.voices || voicesResponse.data.voices.length === 0) {
-            throw new Error('No voices found in this ElevenLabs account.');
-        }
-
-        const voice = voicesResponse.data.voices[0];
-        const voiceId = voice.voice_id;
-        console.log(`[ElevenLabs] Using voice: ${voice.name} (${voiceId})`);
-
-        console.log(`[ElevenLabs] Generating speech for text: "${text.substring(0, 30)}..."`);
-
-        const response = await axios.post(
-            `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`,
-            {
-                text: text,
-                model_id: "eleven_multilingual_v2",
-                voice_settings: {
-                    stability: 0.5,
-                    similarity_boost: 0.75
-                }
-            },
-            {
-                headers: {
-                    'xi-api-key': apiKey,
-                    'Content-Type': 'application/json',
-                    'accept': 'audio/mpeg'
+        console.log(`[ElevenLabs] Attempting to use preferred voice: ${voiceId}`);
+        
+        const generate = async (vId) => {
+            return await axios.post(
+                `https://api.elevenlabs.io/v1/text-to-speech/${vId}/stream`,
+                {
+                    text: text,
+                    model_id: "eleven_multilingual_v2",
+                    voice_settings: {
+                        stability: 0.5,
+                        similarity_boost: 0.75
+                    }
                 },
-                responseType: 'arraybuffer',
-                timeout: 30000 
+                {
+                    headers: {
+                        'xi-api-key': apiKey,
+                        'Content-Type': 'application/json',
+                        'accept': 'audio/mpeg'
+                    },
+                    responseType: 'arraybuffer',
+                    timeout: 30000 
+                }
+            );
+        };
+
+        let response;
+        try {
+            response = await generate(voiceId);
+        } catch (err) {
+            // If the specific voice fails with 404 (Not Found), try to fallback to any available voice
+            if (err.response && err.response.status === 404) {
+                console.warn(`[ElevenLabs] Preferred voice ${voiceId} not found. Falling back to available voices...`);
+                const voicesResponse = await axios.get('https://api.elevenlabs.io/v1/voices', {
+                    headers: { 'xi-api-key': apiKey }
+                });
+                
+                if (voicesResponse.data.voices && voicesResponse.data.voices.length > 0) {
+                    const fallbackVoice = voicesResponse.data.voices[0];
+                    voiceId = fallbackVoice.voice_id;
+                    console.log(`[ElevenLabs] Falling back to voice: ${fallbackVoice.name} (${voiceId})`);
+                    response = await generate(voiceId);
+                } else {
+                    throw new Error('No voices found in this ElevenLabs account.');
+                }
+            } else {
+                throw err;
             }
-        );
+        }
 
         console.log(`[ElevenLabs] Successfully generated audio: ${response.data.byteLength} bytes.`);
         return Buffer.from(response.data);

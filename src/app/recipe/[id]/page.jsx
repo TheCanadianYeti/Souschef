@@ -4,7 +4,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
 import { fetchRecipeById, deleteLocalRecipe } from '../../../data/mockRecipes';
-import { Clock, Users, Play, Pause, ShoppingCart, ArrowLeft, Mic, ChevronRight, ChevronLeft, Check, ChefHat, Minimize2, Trash2, AlertCircle, Link as LinkIcon } from 'lucide-react';
+import { Clock, Users, Play, Pause, ShoppingCart, ArrowLeft, Mic, ChevronRight, ChevronLeft, Check, ChefHat, Minimize2, Trash2, AlertCircle, Link as LinkIcon, Volume2 } from 'lucide-react';
 import Link from 'next/link';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
@@ -90,6 +90,7 @@ export default function RecipePage() {
   const recipeRef = useRef(null);
   const recognitionRef = useRef(null);
   const currentAudioRef = useRef(null);
+  const ttsAbortControllerRef = useRef(null);
   const isSpeakingRef = useRef(false);
 
   // Keep refs in sync with state
@@ -258,9 +259,20 @@ export default function RecipePage() {
   };
 
   const playStepAudio = async (text, onEndedCallback) => {
-    // Stop any existing audio immediately
+    // 1. Cancel any pending fetch
+    if (ttsAbortControllerRef.current) {
+      ttsAbortControllerRef.current.abort();
+    }
+    const abortController = new AbortController();
+    ttsAbortControllerRef.current = abortController;
+
+    // 2. Stop any existing audio immediately
+    stopAllAudio();
     if (currentAudioRef.current) {
-      currentAudioRef.current.pause();
+      try {
+        currentAudioRef.current.pause();
+        currentAudioRef.current.src = ""; // Force stop loading
+      } catch (e) {}
       currentAudioRef.current = null;
     }
 
@@ -271,14 +283,14 @@ export default function RecipePage() {
 
     isSpeakingRef.current = true;
     try {
-      // Use clean API_BASE_URL
       const baseUrl = API_BASE_URL.replace(/\/$/, '');
       addLog(`Requesting TTS...`);
       const response = await fetch(`${baseUrl}/tts/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ text })
+        body: JSON.stringify({ text }),
+        signal: abortController.signal
       });
 
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -300,6 +312,10 @@ export default function RecipePage() {
       await audio.play();
       addLog('ElevenLabs Playing');
     } catch (err) {
+      if (err.name === 'AbortError') {
+        addLog('TTS Request Aborted');
+        return;
+      }
       addLog(`TTS Failed, using Browser`);
       if (typeof window !== 'undefined' && window.speechSynthesis) {
         const utterance = new SpeechSynthesisUtterance(text);
@@ -376,7 +392,6 @@ export default function RecipePage() {
   };
 
   const handleStartCooking = async () => {
-    setIsAssistantEnabled(true);
     setIsCooking(true);
     setCurrentStepIndex(0);
     try {
@@ -388,7 +403,6 @@ export default function RecipePage() {
       const ctx = new AudioContext();
       if (ctx.state === 'suspended') ctx.resume();
     }
-    if (recipe && recipe.steps[0]) playStepAudio(recipe.steps[0].instruction);
   };
 
   const handleToggleAssistant = () => {
@@ -396,7 +410,6 @@ export default function RecipePage() {
     setIsAssistantEnabled(newState);
     if (!newState) {
       if (speechRecognition) try { speechRecognition.stop(); } catch (e) { }
-      stopAllAudio();
       setVoiceResponse('');
     } else {
       setVoiceResponse("Listening...");
@@ -491,9 +504,18 @@ export default function RecipePage() {
             <span className="text-sm font-bold uppercase">{isAssistantEnabled ? 'Hands-free active' : 'Voice assistant off'}</span>
           </div>
 
-          <h2 className="text-3xl sm:text-6xl font-bold leading-tight text-center mb-12 text-text-primary animate-in slide-in-from-bottom-6 duration-500">
-            {currentStep.instruction}
-          </h2>
+          <div className="flex items-center justify-center gap-4 mb-12 group">
+            <h2 className="text-3xl sm:text-6xl font-bold leading-tight text-center text-text-primary animate-in slide-in-from-bottom-6 duration-500">
+              {currentStep.instruction}
+            </h2>
+            <button 
+              onClick={() => playStepAudio(currentStep.instruction)}
+              className="p-3 rounded-full bg-surface-color border border-border-color text-accent-color hover:bg-accent-color hover:text-page transition-all shadow-sm"
+              title="Read instruction"
+            >
+              <Volume2 size={24} />
+            </button>
+          </div>
 
           {currentStep.duration_seconds > 0 && (
             <div className="flex flex-col items-center gap-6 mb-12">
@@ -700,8 +722,17 @@ export default function RecipePage() {
                         <div className="w-0.5 flex-1 min-h-8 bg-border-color mt-2" />
                       )}
                     </div>
-                    <div className="pb-8 pt-1">
-                      <p className="text-xl text-text-primary leading-relaxed font-medium">{step.instruction}</p>
+                    <div className="pb-8 pt-1 flex-grow">
+                      <div className="flex items-start justify-between gap-4">
+                        <p className="text-xl text-text-primary leading-relaxed font-medium">{step.instruction}</p>
+                        <button 
+                          onClick={() => playStepAudio(step.instruction)}
+                          className="mt-1 p-2 rounded-full bg-page text-accent-color hover:bg-accent-color hover:text-page transition-all opacity-0 group-hover:opacity-100 shadow-sm"
+                          title="Read step"
+                        >
+                          <Volume2 size={18} />
+                        </button>
+                      </div>
                       {step.duration_seconds > 0 && (
                         <div className="inline-flex items-center gap-2 mt-4 text-sm text-accent-color font-bold bg-accent-color/5 px-4 py-2 rounded-xl border border-accent-color/10">
                           <Clock size={16} />
