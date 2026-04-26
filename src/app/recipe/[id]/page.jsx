@@ -173,16 +173,22 @@ export default function RecipePage() {
 
       recognition.onend = () => {
         setIsListening(false);
-        addLog("Mic: Stopped (ready for next)");
+        // Only log if it wasn't a network error block
+        if (!isProcessingCommand) {
+          addLog("Mic: Stopped (ready for next)");
+        }
       };
 
       recognition.onerror = (event) => {
         setIsListening(false);
         if (event.error === 'network') {
-          addLog("Network error: Waiting 5s to retry mic...");
-          // Temporarily set processing to true to block the restart effect
+          addLog("Network error: Waiting 10s to stabilize...");
+          // Lock the assistant strictly
           setIsProcessingCommand(true);
-          setTimeout(() => setIsProcessingCommand(false), 5000);
+          setTimeout(() => {
+            setIsProcessingCommand(false);
+            addLog("Mic: Retry allowed.");
+          }, 10000);
         } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
           addLog(`Mic Error: ${event.error}`);
         }
