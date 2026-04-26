@@ -28,16 +28,20 @@ export const deleteLocalRecipe = (id) => {
 // TODO: BACKEND INTEGRATION - Replace these mock functions with actual Axios/fetch calls to Node.js backend.
 import axios from 'axios';
 
-// Backend API Base URL
 // Backend API Base URL - Robust handling of environment variables
 const getBaseUrl = () => {
   let url = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
   // Remove trailing slash if present
   url = url.replace(/\/$/, '');
   
-  // Force HTTPS for non-local URLs to prevent Mixed Content blocks
-  if (!url.includes('localhost') && url.startsWith('http:')) {
-    url = url.replace('http:', 'https:');
+  // Ensure protocol is present and forced to HTTPS for production
+  if (!url.includes('localhost')) {
+    if (url.startsWith('http:')) {
+      url = url.replace('http:', 'https:');
+    } else if (!url.startsWith('https:')) {
+      // If no protocol at all, prepend https://
+      url = `https://${url}`;
+    }
   }
 
   // Ensure /api is present if not local and not already there

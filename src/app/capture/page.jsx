@@ -14,9 +14,14 @@ const getBaseUrl = () => {
   // Remove trailing slash if present
   url = url.replace(/\/$/, '');
   
-  // Force HTTPS for non-local URLs to prevent Mixed Content blocks
-  if (!url.includes('localhost') && url.startsWith('http:')) {
-    url = url.replace('http:', 'https:');
+  // Ensure protocol is present and forced to HTTPS for production
+  if (!url.includes('localhost')) {
+    if (url.startsWith('http:')) {
+      url = url.replace('http:', 'https:');
+    } else if (!url.startsWith('https:')) {
+      // If no protocol at all, prepend https://
+      url = `https://${url}`;
+    }
   }
 
   // Ensure /api is present if not local and not already there
