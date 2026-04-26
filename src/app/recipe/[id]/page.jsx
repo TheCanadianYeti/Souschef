@@ -56,7 +56,12 @@ export default function RecipePage() {
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [isTimerMinimized, setIsTimerMinimized] = useState(false);
   const [stepAudio, setStepAudio] = useState(null);
-  const [isAssistantEnabled, setIsAssistantEnabled] = useState(false);
+  const [isAssistantEnabled, setIsAssistantEnabled] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('assistant_enabled') === 'true';
+    }
+    return false;
+  });
   const [speechRecognition, setSpeechRecognition] = useState(null);
   const [isProcessingCommand, setIsProcessingCommand] = useState(false);
   const [debugLog, setDebugLog] = useState([]);
@@ -100,6 +105,12 @@ export default function RecipePage() {
   useEffect(() => { isProcessingCommandRef.current = isProcessingCommand; }, [isProcessingCommand]);
   useEffect(() => { isCookingRef.current = isCooking; }, [isCooking]);
   useEffect(() => { recipeRef.current = recipe; }, [recipe]);
+
+  useEffect(() => {
+    if (mounted) {
+      localStorage.setItem('assistant_enabled', isAssistantEnabled);
+    }
+  }, [isAssistantEnabled, mounted]);
 
   useEffect(() => {
     setMounted(true);
@@ -224,13 +235,15 @@ export default function RecipePage() {
       setTimerLeft(step.duration_seconds || 0);
       setIsTimerRunning(false);
 
-      // Delayed audio narration
-      const timer = setTimeout(() => {
-        playStepAudio(`Step ${currentStepIndex + 1}: ${step.instruction}`);
-      }, 600);
-      return () => clearTimeout(timer);
+      // Automatic narration ONLY if assistant is enabled
+      if (isAssistantEnabled) {
+        const timer = setTimeout(() => {
+          playStepAudio(`Step ${currentStepIndex + 1}: ${step.instruction}`);
+        }, 600);
+        return () => clearTimeout(timer);
+      }
     }
-  }, [currentStepIndex, isCooking, recipe]);
+  }, [currentStepIndex, isCooking, recipe, isAssistantEnabled]);
 
   useEffect(() => {
     let interval;
