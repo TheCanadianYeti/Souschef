@@ -164,54 +164,50 @@ export default function RecipePage() {
     if (typeof window === 'undefined' || !mounted) return;
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        const recognition = new SpeechRecognition();
-        recognition.continuous = false; // Switch to one-shot for better stability
-        recognition.interimResults = false;
-        recognition.lang = 'en-US';
-    recognitionRef.current = recognition;
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false; 
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+      recognitionRef.current = recognition;
 
-        recognition.onend = () => {
-          setIsListening(false);
-          addLog("Mic: Stopped (ready for next)");
-        };
+      recognition.onend = () => {
+        setIsListening(false);
+        addLog("Mic: Stopped (ready for next)");
+      };
 
-        recognition.onerror = (event) => {
-          setIsListening(false);
-          if (event.error !== 'no-speech' && event.error !== 'aborted') {
-            addLog(`Mic Error: ${event.error}`);
-          }
-        };
-    recognition.onresult = (event) => {
-      // If we are not in cooking mode or are currently speaking, ignore the results
-      if (!isCookingRef.current || isSpeakingRef.current) return;
+      recognition.onerror = (event) => {
+        setIsListening(false);
+        if (event.error !== 'no-speech' && event.error !== 'aborted') {
+          addLog(`Mic Error: ${event.error}`);
+        }
+      };
 
-      const transcript = event.results[0][0].transcript.toLowerCase();
-      addLog(`Heard: "${transcript}"`);
-      if (transcript.includes('chef')) {
-        const cleanCommand = transcript
-          .replace(/hey chef|hi chef|chef/g, '')
-          .replace(/^[,.\s]+/, '')
-          .trim();
-        executeChefCommand(cleanCommand || 'repeat');
-      }
-    };
-    recognition.onend = () => {
-      setIsListening(false);
-      // Use refs — not closed-over state — so we always read live values.
-      if (isCookingRef.current && isAssistantEnabledRef.current && !isProcessingCommandRef.current) {
-        try { recognition.start(); } catch(e) {}
-      }
-    };
+      recognition.onresult = (event) => {
+        if (!isCookingRef.current) return;
 
-    setSpeechRecognition(recognition);
+        const transcript = event.results[0][0].transcript.toLowerCase();
+        addLog(`Heard: "${transcript}"`);
+        
+        if (transcript.includes('chef')) {
+          const cleanCommand = transcript
+            .replace(/hey chef|hi chef|chef/g, '')
+            .replace(/^[,.\s]+/, '')
+            .trim();
+          executeChefCommand(cleanCommand || 'repeat');
+        }
+      };
+
+      setSpeechRecognition(recognition);
     }
 
     return () => {
-      try { recognitionRef.current?.abort(); } catch(e) {}
-      recognitionRef.current = null;
+      if (recognitionRef.current) {
+        try { recognitionRef.current.abort(); } catch (e) {}
+        recognitionRef.current = null;
+      }
     };
-  }, [mounted]); // Only (re)create when mounted — refs handle live state
+  }, [mounted]);
 
   useEffect(() => {
     // Only attempt to start if all conditions are right
