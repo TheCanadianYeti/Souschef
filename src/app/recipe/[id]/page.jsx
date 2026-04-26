@@ -189,17 +189,42 @@ export default function RecipePage() {
       };
 
       recognition.onresult = (event) => {
-        if (!isCookingRef.current) return;
+        if (!isCookingRef.current || isSpeaking) return;
 
         const transcript = event.results[0][0].transcript.toLowerCase();
         addLog(`Heard: "${transcript}"`);
         
+        // --- DIRECT COMMAND DETECTION (Faster & Offline-friendly) ---
+        if (transcript.includes('next') || transcript.includes('forward')) {
+          addLog("Local: Next Step");
+          setCurrentStepIndex(prev => Math.min(prev + 1, recipeRef.current.steps.length - 1));
+          return;
+        }
+        
+        if (transcript.includes('back') || transcript.includes('previous')) {
+          addLog("Local: Previous Step");
+          setCurrentStepIndex(prev => Math.max(prev - 1, 0));
+          return;
+        }
+
+        if (transcript.includes('repeat') || transcript.includes('again')) {
+          addLog("Local: Repeat Step");
+          const step = recipeRef.current.steps[currentStepIndexRef.current];
+          playStepAudio(`Step ${currentStepIndexRef.current + 1}: ${step.instruction}`);
+          return;
+        }
+
+        if (transcript.includes('start') && transcript.includes('timer')) {
+          addLog("Local: Start Timer");
+          setIsTimerRunning(true);
+          playStepAudio("Timer started.");
+          return;
+        }
+
+        // Only use AI for complex/unrecognized queries
         if (transcript.includes('chef')) {
-          setIsProcessingCommand(true); // Lock immediately to prevent restart flickering
-          const cleanCommand = transcript
-            .replace(/hey chef|hi chef|chef/g, '')
-            .replace(/^[,.\s]+/, '')
-            .trim();
+          setIsProcessingCommand(true);
+          const cleanCommand = transcript.replace(/hey chef|hi chef|chef/g, '').trim();
           executeChefCommand(cleanCommand || 'repeat');
         }
       };
