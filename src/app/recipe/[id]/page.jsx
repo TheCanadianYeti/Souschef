@@ -190,6 +190,7 @@ export default function RecipePage() {
         addLog(`Heard: "${transcript}"`);
         
         if (transcript.includes('chef')) {
+          setIsProcessingCommand(true); // Lock immediately to prevent restart flickering
           const cleanCommand = transcript
             .replace(/hey chef|hi chef|chef/g, '')
             .replace(/^[,.\s]+/, '')
@@ -220,20 +221,12 @@ export default function RecipePage() {
         } catch (e) {
           // If already starting, isListening will be corrected by events
         }
-      }, 300); // Small delay to let hardware settle
+      }, 1000); // 1 second delay to ensure hardware is ready and session is reset
       return () => clearTimeout(timer);
     }
   }, [isCooking, isAssistantEnabled, isProcessingCommand, isSpeaking, speechRecognition, isListening]);
 
-  // Start recognition when assistant is first enabled during cooking
-  useEffect(() => {
-    if (isCooking && isAssistantEnabled && speechRecognition) {
-      try { speechRecognition.start(); } catch(e) {}
-    } else if (speechRecognition) {
-      // Force stop if not cooking OR if assistant is disabled
-      try { speechRecognition.abort(); } catch(e) {}
-    }
-  }, [isCooking, isAssistantEnabled, speechRecognition]);
+  // Removed redundant start/stop effect that was causing flickering
 
   useEffect(() => {
     if (isCooking && recipe && recipe.steps[currentStepIndex]) {
