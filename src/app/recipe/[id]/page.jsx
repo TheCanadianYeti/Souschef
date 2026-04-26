@@ -451,16 +451,6 @@ export default function RecipePage() {
 
     return (
       <div className="fixed inset-0 z-50 flex flex-col animate-in fade-in duration-500 overflow-y-auto" style={{ backgroundColor: 'var(--bg-color)' }}>
-        {/* Diagnostic Overlay (Bottom Left) */}
-        <div className="fixed bottom-4 left-4 z-[60] bg-ink/90 text-[10px] text-page p-3 rounded-lg font-mono pointer-events-none opacity-50 hover:opacity-100 transition-opacity">
-          <div className="font-bold mb-1 border-b border-page/20 pb-1">SYSTEM DIAGNOSTICS</div>
-          <div>BACKEND: <span className={diag.backend === 'Connected' ? 'text-green-400' : 'text-red-400'}>{diag.backend}</span></div>
-          <div>SPEECH: <span className={diag.speech === 'Supported' ? 'text-green-400' : 'text-red-400'}>{diag.speech}</span></div>
-          <div>MIC: <span className={diag.mic === 'granted' ? 'text-green-400' : 'text-yellow-400'}>{diag.mic}</span></div>
-          <div className="mt-2 text-[8px] opacity-70">
-            {debugLog.map((log, i) => <div key={i}>• {log}</div>)}
-          </div>
-        </div>
         <div className="p-4 border-b border-border-color flex items-center justify-between glass">
           <button onClick={handleExitCooking} className="flex items-center gap-2 text-text-secondary hover:text-accent-color transition-colors font-semibold">
             <ArrowLeft size={20} />
