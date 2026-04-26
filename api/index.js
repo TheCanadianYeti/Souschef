@@ -5,7 +5,7 @@ const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 
-// Paths are relative to this file's location (project root /api/)
+// Paths are relative to this file at project root /api/index.js
 const config = require('../backend/src/config');
 const { pool } = require('../backend/src/database');
 const { runMigrations } = require('../backend/src/database/migrations');
@@ -14,7 +14,7 @@ const { errorHandler, notFound } = require('../backend/src/middleware');
 
 const app = express();
 
-// CORS - open for safety
+// Open CORS for safety
 app.use(cors({ origin: true, credentials: true }));
 
 // Security & utility middleware
@@ -32,14 +32,14 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// Mount all API routes — Vercel strips the /api prefix via the rewrite rule
-app.use('/', routes);
+// Mount at /api — Vercel passes the full path (e.g. /api/health) to this function
+app.use('/api', routes);
 
 // Error handling
 app.use(notFound);
 app.use(errorHandler);
 
-// Auto-run migrations on cold start (non-blocking)
+// Auto-run migrations on cold start
 (async () => {
     try {
         await pool.query('SELECT NOW()');
