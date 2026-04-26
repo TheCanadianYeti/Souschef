@@ -164,79 +164,89 @@ export default function RecipePage() {
     if (typeof window === 'undefined' || !mounted) return;
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      const recognition = new SpeechRecognition();
-      recognition.continuous = false; 
-      recognition.interimResults = false;
-      recognition.lang = 'en-US';
-      recognitionRef.current = recognition;
-
-      recognition.onend = () => {
-        setIsListening(false);
-        // Only log if it wasn't a network error block
-        if (!isProcessingCommand) {
-          addLog("Mic: Stopped (ready for next)");
-        }
-      };
-
-      recognition.onerror = (event) => {
-        setIsListening(false);
-        if (event.error === 'network') {
-          addLog("Network error: Waiting 10s to stabilize...");
-          // Lock the assistant strictly
-          setIsProcessingCommand(true);
-          setTimeout(() => {
-            setIsProcessingCommand(false);
-            addLog("Mic: Retry allowed.");
-          }, 10000);
-        } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
-          addLog(`Mic Error: ${event.error}`);
-        }
-      };
-
-      recognition.onresult = (event) => {
-        if (!isCookingRef.current || isSpeaking) return;
-
-        const transcript = event.results[0][0].transcript.toLowerCase();
-        addLog(`Heard: "${transcript}"`);
-        
-        // --- DIRECT COMMAND DETECTION (Faster & Offline-friendly) ---
-        if (transcript.includes('next') || transcript.includes('forward')) {
-          addLog("Local: Next Step");
-          setCurrentStepIndex(prev => Math.min(prev + 1, recipeRef.current.steps.length - 1));
-          return;
-        }
-        
-        if (transcript.includes('back') || transcript.includes('previous')) {
-          addLog("Local: Previous Step");
-          setCurrentStepIndex(prev => Math.max(prev - 1, 0));
-          return;
-        }
-
-        if (transcript.includes('repeat') || transcript.includes('again')) {
-          addLog("Local: Repeat Step");
-          const step = recipeRef.current.steps[currentStepIndexRef.current];
-          playStepAudio(`Step ${currentStepIndexRef.current + 1}: ${step.instruction}`);
-          return;
-        }
-
-        if (transcript.includes('start') && transcript.includes('timer')) {
-          addLog("Local: Start Timer");
-          setIsTimerRunning(true);
-          playStepAudio("Timer started.");
-          return;
-        }
-
-        // Only use AI for complex/unrecognized queries
-        if (transcript.includes('chef')) {
-          setIsProcessingCommand(true);
-          const cleanCommand = transcript.replace(/hey chef|hi chef|chef/g, '').trim();
-          executeChefCommand(cleanCommand || 'repeat');
-        }
-      };
-
-      setSpeechRecognition(recognition);
+    if (!SpeechRecognition) {
+      addLog("Speech recognition not supported in this browser.");
+      return;
     }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+    recognitionRef.current = recognition;
+
+    recognition.onend = () => {
+      setIsListening(false);
+      if (!isProcessingCommand) {
+        addLog("Mic: Stopped (ready for next)");
+      }
+    };
+
+    recognition.onerror = (event) => {
+      setIsListening(false);
+      if (event.error === 'network') {
+        addLog("Network error: Mic unavailable. Waiting 10s...");
+        setIsProcessingCommand(true);
+        setTimeout(() => {
+          setIsProcessingCommand(false);
+          addLog("Mic: Ready to try again.");
+        }, 10000);
+      } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
+        addLog(`Mic Error: ${event.error}`);
+      }
+    };
+
+    recognition.onresult = (event) => {
+      if (!isCookingRef.current || isSpeaking) return;
+
+      const transcript = event.results[0][0].transcript.toLowerCase();
+      addLog(`Heard: "${transcript}"`);
+
+      // --- LOCAL COMMANDS (No internet required for logic) ---
+      if (transcript.includes('next') || transcript.includes('forward')) {
+        addLog("Local: Next Step");
+        setCurrentStepIndex(prev => {
+          const next = Math.min(prev + 1, recipeRef.current.steps.length - 1);
+          currentStepIndexRef.current = next;
+          return next;
+        });
+        return;
+      }
+
+      if (transcript.includes('back') || transcript.includes('previous')) {
+        addLog("Local: Previous Step");
+        setCurrentStepIndex(prev => {
+          const next = Math.max(prev - 1, 0);
+          currentStepIndexRef.current = next;
+          return next;
+        });
+        return;
+      }
+
+      if (transcript.includes('repeat') || transcript.includes('again')) {
+        addLog("Local: Repeat Step");
+        const idx = currentStepIndexRef.current;
+        const step = recipeRef.current.steps[idx];
+        playStepAudio(`Step ${idx + 1}: ${step.instruction}`);
+        return;
+      }
+
+      if (transcript.includes('start') && transcript.includes('timer')) {
+        addLog("Local: Start Timer");
+        setIsTimerRunning(true);
+        playStepAudio("Timer started.");
+        return;
+      }
+
+      // --- AI COMMANDS (Requires internet) ---
+      if (transcript.includes('chef')) {
+        setIsProcessingCommand(true);
+        const cleanCommand = transcript.replace(/hey chef|hi chef|chef/g, '').trim();
+        executeChefCommand(cleanCommand || 'repeat');
+      }
+    };
+
+    setSpeechRecognition(recognition);
 
     return () => {
       if (recognitionRef.current) {
@@ -244,7 +254,7 @@ export default function RecipePage() {
         recognitionRef.current = null;
       }
     };
-  }, [mounted]);
+  }, [mounted, isSpeaking]);
 
   useEffect(() => {
     // Only attempt to start if all conditions are right
