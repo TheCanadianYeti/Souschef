@@ -205,9 +205,10 @@ export default function RecipePage() {
     };
 
     setSpeechRecognition(recognition);
+    }
 
     return () => {
-      try { recognition.abort(); } catch(e) {}
+      try { recognitionRef.current?.abort(); } catch(e) {}
       recognitionRef.current = null;
     };
   }, [mounted]); // Only (re)create when mounted — refs handle live state
