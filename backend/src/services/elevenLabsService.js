@@ -1,5 +1,8 @@
 const axios = require('axios');
 
+// Simple in-memory cache to save credits and prevent redundant API calls
+const audioCache = new Map();
+
 /**
  * Generate Speech from Text (TTS) using ElevenLabs API
  * Uses the "known good format" with direct axios calls.
@@ -15,62 +18,42 @@ const generateSpeech = async (text) => {
         return null;
     }
 
+    // Check cache first to save credits and ensure stability
+    const cacheKey = `${text}_${process.env.ELEVENLABS_VOICE_ID || 'default'}`;
+    if (audioCache.has(cacheKey)) {
+        console.log(`[ElevenLabs] Serving from cache: "${text.substring(0, 20)}..."`);
+        return audioCache.get(cacheKey);
+    }
+
     try {
-        // Rachel (Standard voice) is usually available on all plans
-        const preferredVoiceId = "21m00Tcm4TlvDq8ikWAM";
-        let voiceId = preferredVoiceId;
+        const voiceId = process.env.ELEVENLABS_VOICE_ID || "CwhRBWXzGAHq8TQ4Fs17";
+        console.log(`[ElevenLabs] Using static voice ID: ${voiceId}`);
 
-        console.log(`[ElevenLabs] Attempting to use standard voice: ${voiceId}`);
-        
-        const generate = async (vId) => {
-            return await axios.post(
-                `https://api.elevenlabs.io/v1/text-to-speech/${vId}/stream`,
-                {
-                    text: text,
-                    model_id: "eleven_monolingual_v1", // Faster and more compatible with basic plans
-                    voice_settings: {
-                        stability: 0.5,
-                        similarity_boost: 0.75
-                    }
+        console.log(`[ElevenLabs] Generating speech for text: "${text.substring(0, 30)}..."`);
+        const response = await axios.post(
+            `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`,
+            {
+                text: text,
+                model_id: "eleven_monolingual_v1",
+                voice_settings: {
+                    stability: 0.5,
+                    similarity_boost: 0.75
+                }
+            },
+            {
+                headers: {
+                    'xi-api-key': apiKey,
+                    'Content-Type': 'application/json',
+                    'accept': 'audio/mpeg'
                 },
-                {
-                    headers: {
-                        'xi-api-key': apiKey,
-                        'Content-Type': 'application/json',
-                        'accept': 'audio/mpeg'
-                    },
-                    responseType: 'arraybuffer',
-                    timeout: 30000 
-                }
-            );
-        };
-
-        let response;
-        try {
-            response = await generate(voiceId);
-        } catch (err) {
-            // If the specific voice fails with 404 (Not Found), try to fallback to any available voice
-            if (err.response && err.response.status === 404) {
-                console.warn(`[ElevenLabs] Preferred voice ${voiceId} not found. Falling back to available voices...`);
-                const voicesResponse = await axios.get('https://api.elevenlabs.io/v1/voices', {
-                    headers: { 'xi-api-key': apiKey }
-                });
-                
-                if (voicesResponse.data.voices && voicesResponse.data.voices.length > 0) {
-                    const fallbackVoice = voicesResponse.data.voices[0];
-                    voiceId = fallbackVoice.voice_id;
-                    console.log(`[ElevenLabs] Falling back to voice: ${fallbackVoice.name} (${voiceId})`);
-                    response = await generate(voiceId);
-                } else {
-                    throw new Error('No voices found in this ElevenLabs account.');
-                }
-            } else {
-                throw err;
+                responseType: 'arraybuffer'
             }
-        }
+        );
 
         console.log(`[ElevenLabs] Successfully generated audio: ${response.data.byteLength} bytes.`);
-        return Buffer.from(response.data);
+        const buffer = Buffer.from(response.data);
+        audioCache.set(cacheKey, buffer);
+        return buffer;
     } catch (error) {
         console.error("--- ELEVENLABS API ERROR ---");
         if (error.response) {
