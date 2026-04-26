@@ -430,24 +430,20 @@ export default function RecipePage() {
   };
 
   const handleDelete = async () => {
+    // Always remove from localStorage first (catches local-only recipes)
+    deleteLocalRecipe(id);
+
+    // Also attempt to delete from backend DB (catches server-stored recipes)
     try {
-      const response = await fetch(`${API_BASE_URL}/recipes/${id}`, {
+      await fetch(`${API_BASE_URL}/recipes/${id}`, {
         method: 'DELETE',
-        credentials: 'include'
       });
-      if (response.ok) {
-        router.push('/');
-      } else {
-        console.error('Failed to delete recipe from server');
-        // Fallback for safety
-        deleteLocalRecipe(id);
-        router.push('/');
-      }
     } catch (err) {
-      console.error('Error deleting recipe:', err);
-      deleteLocalRecipe(id);
-      router.push('/');
+      // Silently ignore — recipe may have only been local
+      console.log('Recipe was local-only, removed from localStorage.');
     }
+
+    router.push('/');
   };
 
 

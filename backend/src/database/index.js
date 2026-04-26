@@ -1,10 +1,11 @@
 const { Pool } = require('pg');
 const config = require('../config');
 
-// Support both DATABASE_URL (Vercel Postgres) and individual config vars (local dev)
-const poolConfig = process.env.DATABASE_URL
+// Support DATABASE_URL (generic), POSTGRES_URL (Vercel Postgres/Neon), or individual config vars
+const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+const poolConfig = connectionString
     ? {
-        connectionString: process.env.DATABASE_URL,
+        connectionString,
         ssl: { rejectUnauthorized: false }, // Required for Vercel/Neon Postgres
         max: config.database.pool.max,
         min: config.database.pool.min,
