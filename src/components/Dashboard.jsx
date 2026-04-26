@@ -13,6 +13,30 @@ export default function Dashboard() {
   const [selectedTags, setSelectedTags] = useState([]);
 
   useEffect(() => {
+    const checkHealth = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/health`);
+        const data = await res.json();
+        console.log('[HEALTH CHECK] Success:', data);
+        alert(`API CONNECTED! Using URL: ${API_BASE_URL}`);
+      } catch (err) {
+        console.error('[HEALTH CHECK] Failed:', err);
+        alert(`API FAILED! Tried: ${API_BASE_URL}. Error: ${err.message}`);
+      }
+    };
+    
+    // Backend API Base URL - Robust handling of environment variables
+    const getBaseUrl = () => {
+      let url = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+      url = url.replace(/\/$/, '');
+      if (!url.includes('localhost') && url.startsWith('http:')) url = url.replace('http:', 'https:');
+      if (!url.includes('localhost') && !url.endsWith('/api')) url = `${url}/api`;
+      return url;
+    };
+    const API_BASE_URL = getBaseUrl();
+
+    checkHealth();
+    
     const loadRecipes = async () => {
       try {
         const data = await fetchRecipes();
