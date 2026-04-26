@@ -1,5 +1,5 @@
 {
-  "/capture/page": "app/capture/page.js",
   "/page": "app/page.js",
-  "/recipe/[id]/page": "app/recipe/[id]/page.js"
+  "/recipe/[id]/page": "app/recipe/[id]/page.js",
+  "/capture/page": "app/capture/page.js"
 }
