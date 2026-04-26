@@ -164,22 +164,24 @@ export default function RecipePage() {
     if (typeof window === 'undefined' || !mounted) return;
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
-
-    const recognition = new SpeechRecognition();
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.lang = 'en-US';
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = false; // Switch to one-shot for better stability
+        recognition.interimResults = false;
+        recognition.lang = 'en-US';
     recognitionRef.current = recognition;
 
-    recognition.onstart = () => {
-      setIsListening(true);
-      addLog('Microphone listening...');
-    };
-    recognition.onerror = (e) => {
-      addLog(`Mic error: ${e.error}`);
-      setIsListening(false);
-    };
+        recognition.onend = () => {
+          setIsListening(false);
+          addLog("Mic: Stopped (ready for next)");
+        };
+
+        recognition.onerror = (event) => {
+          setIsListening(false);
+          if (event.error !== 'no-speech' && event.error !== 'aborted') {
+            addLog(`Mic Error: ${event.error}`);
+          }
+        };
     recognition.onresult = (event) => {
       // If we are not in cooking mode or are currently speaking, ignore the results
       if (!isCookingRef.current || isSpeakingRef.current) return;
@@ -210,25 +212,19 @@ export default function RecipePage() {
     };
   }, [mounted]); // Only (re)create when mounted — refs handle live state
 
-  // Explicit effect to restart recognition when processing ends
   useEffect(() => {
+    // Only attempt to start if all conditions are right
     if (isCooking && isAssistantEnabled && !isProcessingCommand && !isSpeaking && speechRecognition && !isListening) {
-      try {
-        speechRecognition.start();
-        setIsListening(true);
-        addLog("Mic: Listening...");
-      } catch (e) {
-        // Silently ignore already started errors
-      }
-    }
-    
-    // Stop if speaking or processing
-    if ((isSpeaking || isProcessingCommand || !isAssistantEnabled) && isListening && speechRecognition) {
-      try {
-        speechRecognition.stop();
-        setIsListening(false);
-        addLog("Mic: Paused (Speaking/Processing)");
-      } catch (e) {}
+      const timer = setTimeout(() => {
+        try {
+          speechRecognition.start();
+          setIsListening(true);
+          addLog("Mic: Listening...");
+        } catch (e) {
+          // If already starting, isListening will be corrected by events
+        }
+      }, 300); // Small delay to let hardware settle
+      return () => clearTimeout(timer);
     }
   }, [isCooking, isAssistantEnabled, isProcessingCommand, isSpeaking, speechRecognition, isListening]);
 
