@@ -178,7 +178,12 @@ export default function RecipePage() {
 
       recognition.onerror = (event) => {
         setIsListening(false);
-        if (event.error !== 'no-speech' && event.error !== 'aborted') {
+        if (event.error === 'network') {
+          addLog("Network error: Waiting 5s to retry mic...");
+          // Temporarily set processing to true to block the restart effect
+          setIsProcessingCommand(true);
+          setTimeout(() => setIsProcessingCommand(false), 5000);
+        } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
           addLog(`Mic Error: ${event.error}`);
         }
       };

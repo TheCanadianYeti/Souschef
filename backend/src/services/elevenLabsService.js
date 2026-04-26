@@ -46,7 +46,8 @@ const generateSpeech = async (text) => {
                     'Content-Type': 'application/json',
                     'accept': 'audio/mpeg'
                 },
-                responseType: 'arraybuffer'
+                responseType: 'arraybuffer',
+                timeout: 10000 
             }
         );
 
