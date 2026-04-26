@@ -28,10 +28,6 @@ export default function CapturePage() {
     setError('');
 
     try {
-      if (!API_BASE_URL || API_BASE_URL.includes('localhost')) {
-        console.error('CRITICAL: API_BASE_URL is not set to Railway! Current:', API_BASE_URL);
-      }
-      console.log(`[DEBUG] Calling API: ${API_BASE_URL}/recipes/from-url`);
       const response = await axios.post(`${API_BASE_URL}/recipes/from-url`, { url });
 
       const newRecipe = response.data.data;

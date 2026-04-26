@@ -1,17 +1,29 @@
 const { Pool } = require('pg');
 const config = require('../config');
 
-const pool = new Pool({
-    host: config.database.host,
-    port: config.database.port,
-    database: config.database.name,
-    user: config.database.user,
-    password: config.database.password,
-    max: config.database.pool.max,
-    min: config.database.pool.min,
-    connectionTimeoutMillis: config.database.pool.acquire,
-    idleTimeoutMillis: config.database.pool.idle
-});
+// Support both DATABASE_URL (Vercel Postgres) and individual config vars (local dev)
+const poolConfig = process.env.DATABASE_URL
+    ? {
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false }, // Required for Vercel/Neon Postgres
+        max: config.database.pool.max,
+        min: config.database.pool.min,
+        connectionTimeoutMillis: config.database.pool.acquire,
+        idleTimeoutMillis: config.database.pool.idle
+    }
+    : {
+        host: config.database.host,
+        port: config.database.port,
+        database: config.database.name,
+        user: config.database.user,
+        password: config.database.password,
+        max: config.database.pool.max,
+        min: config.database.pool.min,
+        connectionTimeoutMillis: config.database.pool.acquire,
+        idleTimeoutMillis: config.database.pool.idle
+    };
+
+const pool = new Pool(poolConfig);
 
 // Test database connection
 pool.on('connect', () => {

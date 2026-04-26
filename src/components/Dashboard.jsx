@@ -13,45 +13,6 @@ export default function Dashboard() {
   const [selectedTags, setSelectedTags] = useState([]);
 
   useEffect(() => {
-    const checkHealth = async () => {
-      try {
-        const res = await fetch(`${API_BASE_URL}/health`);
-        const data = await res.json();
-        console.log('[HEALTH CHECK] Success:', data);
-        alert(`API CONNECTED! Using URL: ${API_BASE_URL}`);
-      } catch (err) {
-        console.error('[HEALTH CHECK] Failed:', err);
-        alert(`API FAILED! Tried: ${API_BASE_URL}. Error: ${err.message}`);
-      }
-    };
-    
-    // Backend API Base URL - Robust handling of environment variables
-    const getBaseUrl = () => {
-      let url = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
-      // Remove trailing slash if present
-      url = url.replace(/\/$/, '');
-      
-      // Ensure protocol is present and forced to HTTPS for production
-      if (!url.includes('localhost')) {
-        if (url.startsWith('http:')) {
-          url = url.replace('http:', 'https:');
-        } else if (!url.startsWith('https:')) {
-          // If no protocol at all, prepend https://
-          url = `https://${url}`;
-        }
-      }
-
-      // Ensure /api is present if not local and not already there
-      if (!url.includes('localhost') && !url.endsWith('/api')) {
-        url = `${url}/api`;
-      }
-      return url;
-    };
-
-    const API_BASE_URL = getBaseUrl();
-
-    checkHealth();
-    
     const loadRecipes = async () => {
       try {
         const data = await fetchRecipes();
