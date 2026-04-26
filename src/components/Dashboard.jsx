@@ -28,11 +28,26 @@ export default function Dashboard() {
     // Backend API Base URL - Robust handling of environment variables
     const getBaseUrl = () => {
       let url = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+      // Remove trailing slash if present
       url = url.replace(/\/$/, '');
-      if (!url.includes('localhost') && url.startsWith('http:')) url = url.replace('http:', 'https:');
-      if (!url.includes('localhost') && !url.endsWith('/api')) url = `${url}/api`;
+      
+      // Ensure protocol is present and forced to HTTPS for production
+      if (!url.includes('localhost')) {
+        if (url.startsWith('http:')) {
+          url = url.replace('http:', 'https:');
+        } else if (!url.startsWith('https:')) {
+          // If no protocol at all, prepend https://
+          url = `https://${url}`;
+        }
+      }
+
+      // Ensure /api is present if not local and not already there
+      if (!url.includes('localhost') && !url.endsWith('/api')) {
+        url = `${url}/api`;
+      }
       return url;
     };
+
     const API_BASE_URL = getBaseUrl();
 
     checkHealth();
