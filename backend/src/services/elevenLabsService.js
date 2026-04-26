@@ -93,6 +93,11 @@ const generateSpeech = async (text) => {
                 console.error("CRITICAL: ElevenLabs has detected unusual activity and blocked this request. Your API key or IP may be restricted.");
             }
 
+            // Special handling for permission errors
+            if (errorMsg.includes('missing_permissions')) {
+                console.error("CRITICAL: Your ElevenLabs API key is missing required permissions (scopes). Please ensure it has 'tts_write' and 'voices_read' access.");
+            }
+
             if (status === 401) {
                 console.error("Authentication failed. Check your ELEVENLABS_API_KEY.");
             } else if (status === 402) {
