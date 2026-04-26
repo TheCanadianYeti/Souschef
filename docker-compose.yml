@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  # Frontend Service (Next.js)
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:3001
+      - NEXT_PUBLIC_ENV=development
+    depends_on:
+      - backend
+
+  # Backend Service (Express)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - DATABASE_URL=postgresql://user:password@db:5432/souschef
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    depends_on:
+      - db
+
+  # Database Service (PostgreSQL)
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=souschef
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
