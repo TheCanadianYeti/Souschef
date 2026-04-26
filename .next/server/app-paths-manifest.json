@@ -1,6 +1,5 @@
 {
-  "/capture/page": "app/capture/page.js",
   "/page": "app/page.js",
-  "/profile/page": "app/profile/page.js",
-  "/icon.svg/route": "app/icon.svg/route.js"
+  "/capture/page": "app/capture/page.js",
+  "/profile/page": "app/profile/page.js"
 }
