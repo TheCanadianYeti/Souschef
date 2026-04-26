@@ -8,7 +8,19 @@ import WebcamCapture from '../../components/WebcamCapture';
 import { saveLocalRecipe } from '../../data/mockRecipes';
 
 // Backend API Base URL
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+// Backend API Base URL - Robust handling of environment variables
+const getBaseUrl = () => {
+  let url = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+  // Remove trailing slash if present
+  url = url.replace(/\/$/, '');
+  // Ensure /api is present if not local and not already there
+  if (!url.includes('localhost') && !url.endsWith('/api')) {
+    url = `${url}/api`;
+  }
+  return url;
+};
+
+const API_BASE_URL = getBaseUrl();
 
 export default function CapturePage() {
   const router = useRouter();

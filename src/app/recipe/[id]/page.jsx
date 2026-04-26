@@ -408,7 +408,7 @@ export default function RecipePage() {
 
   const handleDelete = async () => {
     try {
-      const response = await fetch(`http://localhost:3001/api/recipes/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/recipes/${id}`, {
         method: 'DELETE',
         credentials: 'include'
       });
