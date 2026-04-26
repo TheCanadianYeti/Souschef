@@ -62,6 +62,7 @@ export default function RecipePage() {
     }
     return false;
   });
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const [speechRecognition, setSpeechRecognition] = useState(null);
   const [isProcessingCommand, setIsProcessingCommand] = useState(false);
   const [debugLog, setDebugLog] = useState([]);
@@ -97,7 +98,6 @@ export default function RecipePage() {
   const currentAudioRef = useRef(null);
   const ttsAbortControllerRef = useRef(null);
   const lastRequestTimestampRef = useRef(0);
-  const isSpeakingRef = useRef(false);
 
   // Keep refs in sync with state
   useEffect(() => { currentStepIndexRef.current = currentStepIndex; }, [currentStepIndex]);
@@ -212,10 +212,25 @@ export default function RecipePage() {
 
   // Explicit effect to restart recognition when processing ends
   useEffect(() => {
-    if (isCooking && isAssistantEnabled && !isProcessingCommand && speechRecognition && !isListening) {
-      try { speechRecognition.start(); } catch (e) { }
+    if (isCooking && isAssistantEnabled && !isProcessingCommand && !isSpeaking && speechRecognition && !isListening) {
+      try {
+        speechRecognition.start();
+        setIsListening(true);
+        addLog("Mic: Listening...");
+      } catch (e) {
+        // Silently ignore already started errors
+      }
     }
-  }, [isProcessingCommand, isCooking, isAssistantEnabled, speechRecognition, isListening]);
+    
+    // Stop if speaking or processing
+    if ((isSpeaking || isProcessingCommand || !isAssistantEnabled) && isListening && speechRecognition) {
+      try {
+        speechRecognition.stop();
+        setIsListening(false);
+        addLog("Mic: Paused (Speaking/Processing)");
+      } catch (e) {}
+    }
+  }, [isCooking, isAssistantEnabled, isProcessingCommand, isSpeaking, speechRecognition, isListening]);
 
   // Start recognition when assistant is first enabled during cooking
   useEffect(() => {
@@ -265,6 +280,7 @@ export default function RecipePage() {
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
+    setIsSpeaking(false);
   };
 
   const addLog = (msg) => {
@@ -298,7 +314,7 @@ export default function RecipePage() {
       return;
     }
 
-    isSpeakingRef.current = true;
+    setIsSpeaking(true);
     try {
       const baseUrl = API_BASE_URL.replace(/\/$/, '');
       addLog(`Requesting TTS...`);
@@ -321,11 +337,11 @@ export default function RecipePage() {
       currentAudioRef.current = audio;
       
       audio.onended = () => {
-        if (lastRequestTimestampRef.current === timestamp) isSpeakingRef.current = false;
+        if (lastRequestTimestampRef.current === timestamp) setIsSpeaking(false);
         if (onEndedCallback) onEndedCallback();
       };
       audio.onerror = () => {
-        if (lastRequestTimestampRef.current === timestamp) isSpeakingRef.current = false;
+        if (lastRequestTimestampRef.current === timestamp) setIsSpeaking(false);
         if (onEndedCallback) onEndedCallback();
       };
 
@@ -358,18 +374,18 @@ export default function RecipePage() {
         utterance.rate = 0.95; // Slightly slower sounds more natural
         utterance.pitch = 1.0;
         
-        utterance.onstart = () => { isSpeakingRef.current = true; };
+        utterance.onstart = () => { setIsSpeaking(true); };
         utterance.onend = () => { 
-          if (lastRequestTimestampRef.current === timestamp) isSpeakingRef.current = false;
+          if (lastRequestTimestampRef.current === timestamp) setIsSpeaking(false);
           if (onEndedCallback) onEndedCallback();
         };
         utterance.onerror = () => {
-          if (lastRequestTimestampRef.current === timestamp) isSpeakingRef.current = false;
+          if (lastRequestTimestampRef.current === timestamp) setIsSpeaking(false);
           if (onEndedCallback) onEndedCallback();
         };
         window.speechSynthesis.speak(utterance);
       } else {
-        isSpeakingRef.current = false;
+        setIsSpeaking(false);
         if (onEndedCallback) onEndedCallback();
       }
     }
