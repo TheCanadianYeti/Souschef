@@ -7,6 +7,8 @@ import { fetchRecipeById, deleteLocalRecipe } from '../../../data/mockRecipes';
 import { Clock, Users, Play, Pause, ShoppingCart, ArrowLeft, Mic, ChevronRight, ChevronLeft, Check, ChefHat, Minimize2, Trash2, AlertCircle, Link as LinkIcon } from 'lucide-react';
 import Link from 'next/link';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+
 const playChime = () => {
   try {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -111,7 +113,8 @@ export default function RecipePage() {
         };
 
         try {
-          const res = await fetch('http://localhost:3001/api/health', { credentials: 'include' });
+          const baseUrl = API_BASE_URL.replace(/\/$/, '');
+          const res = await fetch(`${baseUrl}/health`, { credentials: 'include' });
           s.backend = res.ok ? 'Connected' : `Error: ${res.status}`;
         } catch (e) {
           s.backend = 'Disconnected';
@@ -266,34 +269,12 @@ export default function RecipePage() {
       return;
     }
 
-    // Backend API Base URL - Robust handling of environment variables
-    const getBaseUrl = () => {
-      let url = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
-      // Remove trailing slash if present
-      url = url.replace(/\/$/, '');
-      
-      // Ensure protocol is present and forced to HTTPS for production
-      if (!url.includes('localhost')) {
-        if (url.startsWith('http:')) {
-          url = url.replace('http:', 'https:');
-        } else if (!url.startsWith('https:')) {
-          // If no protocol at all, prepend https://
-          url = `https://${url}`;
-        }
-      }
-
-      // Ensure /api is present if not local and not already there
-      if (!url.includes('localhost') && !url.endsWith('/api')) {
-        url = `${url}/api`;
-      }
-      return url;
-    };
-
     isSpeakingRef.current = true;
     try {
-      const BASE_URL = getBaseUrl();
+      // Use clean API_BASE_URL
+      const baseUrl = API_BASE_URL.replace(/\/$/, '');
       addLog(`Requesting TTS...`);
-      const response = await fetch(`${BASE_URL}/tts/generate`, {
+      const response = await fetch(`${baseUrl}/tts/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -350,8 +331,8 @@ export default function RecipePage() {
     const safetyTimer = setTimeout(() => setIsProcessingCommand(false), 8000);
 
     try {
-      const BASE_URL = 'http://localhost:3001/api';
-      const response = await fetch(`${BASE_URL}/assistant/command`, {
+      const baseUrl = API_BASE_URL.replace(/\/$/, '');
+      const response = await fetch(`${baseUrl}/assistant/command`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -430,20 +411,37 @@ export default function RecipePage() {
   };
 
   const handleDelete = async () => {
-    // Always remove from localStorage first (catches local-only recipes)
-    deleteLocalRecipe(id);
-
-    // Also attempt to delete from backend DB (catches server-stored recipes)
     try {
-      await fetch(`${API_BASE_URL}/recipes/${id}`, {
-        method: 'DELETE',
-      });
-    } catch (err) {
-      // Silently ignore — recipe may have only been local
-      console.log('Recipe was local-only, removed from localStorage.');
-    }
+      console.log(`[DEBUG] Starting deletion for recipe ID: ${id}`);
+      
+      // 1. Always remove from localStorage first (catches local-only recipes)
+      deleteLocalRecipe(id);
+      console.log(`[DEBUG] Removed from localStorage`);
 
-    router.push('/');
+      // 2. Only attempt to delete from backend DB if it's a real UUID
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      
+      if (uuidRegex.test(id)) {
+        console.log(`[DEBUG] Valid UUID detected, calling backend...`);
+        // Use clean API_BASE_URL
+        const baseUrl = API_BASE_URL.replace(/\/$/, '');
+        await axios.delete(`${baseUrl}/recipes/${id}`, {
+          withCredentials: true
+        });
+        console.log(`[DEBUG] Backend deletion successful`);
+      } else {
+        console.log(`[DEBUG] Not a UUID, skipping backend call`);
+      }
+
+      // 3. Force a full page reload to clear any client-side caches
+      console.log(`[DEBUG] Redirecting to dashboard...`);
+      window.location.href = '/';
+      
+    } catch (err) {
+      console.error('[DEBUG] Deletion process failed:', err);
+      // Still redirect so the user isn't stuck
+      window.location.href = '/';
+    }
   };
 
 

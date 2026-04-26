@@ -35,10 +35,29 @@ export const fetchRecipes = async () => {
   try {
     const response = await axios.get(`${API_BASE_URL}/recipes`);
     const backendRecipes = response.data.data || [];
-    return [...backendRecipes, ...getLocalRecipes()];
+    const localRecipes = getLocalRecipes();
+    
+    // Combine and deduplicate by ID, preferring backend version
+    const recipeMap = new Map();
+    
+    // Add local recipes first
+    localRecipes.forEach(r => {
+      if (r && r.id) recipeMap.set(String(r.id), r);
+    });
+    
+    // Overwrite with backend recipes (truth)
+    backendRecipes.forEach(r => {
+      if (r && r.id) recipeMap.set(String(r.id), r);
+    });
+    
+    const allRecipes = Array.from(recipeMap.values());
+    console.log(`[DEBUG] Loaded ${backendRecipes.length} backend and ${localRecipes.length} local recipes. Total unique: ${allRecipes.length}`);
+    
+    return allRecipes;
   } catch (error) {
     console.error('Error fetching recipes from backend:', error);
-    return [...mockRecipes, ...getLocalRecipes()];
+    const local = getLocalRecipes();
+    return [...mockRecipes, ...local];
   }
 };
 

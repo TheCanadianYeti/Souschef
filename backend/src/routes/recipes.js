@@ -298,6 +298,16 @@ router.delete('/:id',
         try {
             const { id } = req.params;
             const userId = req.user?.id || '00000000-0000-0000-0000-000000000000';
+            console.log(`[DEBUG] Attempting to delete recipe ${id} for user ${userId}`);
+
+            // Validate UUID to prevent DB errors with local-only IDs
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            if (!uuidRegex.test(id)) {
+                return res.json({
+                    success: true,
+                    message: 'Recipe was local-only, no server action needed'
+                });
+            }
 
             // Delete the recipe. Ingredients and steps will be deleted by CASCADE if set up, 
             // otherwise we handle it here.
