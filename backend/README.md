@@ -1,171 +1,115 @@
-# souschef Backend API
+# Souschef — Backend
 
-REST API backend for the souschef - AI-Powered Recipe Capture & Cooking Assistant application.
+Node.js + Express REST API. Runs on port 3001.
 
-## Tech Stack
+## Stack
 
-- **Runtime:** Node.js 18+
-- **Framework:** Express.js
-- **Database:** PostgreSQL 14+
-- **Cache:** Redis (optional, for rate limiting)
-- **Authentication:** JWT (with optional Auth0 integration)
+- Node.js 18+
+- Express
+- PostgreSQL 15
+- Redis (optional, for rate limiting)
+- Docker + Docker Compose
 
-## Quick Start
+## Getting Started
 
-### Prerequisites
+### Option A: Docker (recommended)
 
-- Node.js 18 or higher
-- PostgreSQL 14 or higher
-- Redis (optional)
-
-### Installation
-
-1. **Clone and navigate to backend directory:**
-   ```bash
-   cd backend
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-
-3. **Configure environment:**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
-
-4. **Set up PostgreSQL database:**
-   ```sql
-   CREATE DATABASE souschef_db;
-   CREATE USER souschef_user WITH PASSWORD 'your_secure_password';
-   GRANT ALL PRIVILEGES ON DATABASE souschef_db TO souschef_user;
-   ```
-
-5. **Run migrations (automatic on first start):**
-   ```bash
-   npm start
-   ```
-
-### Development
+Spins up the API, PostgreSQL, and Redis together.
 
 ```bash
+cd backend
+cp envExample.txt .env
+# Fill in your API keys in .env
+docker-compose up
+```
+
+### Option B: Manual
+
+You need a running PostgreSQL instance first.
+
+```bash
+cd backend
+cp envExample.txt .env
+# Fill in your API keys and DB credentials in .env
+npm install
+npm run migrate
 npm run dev
 ```
 
-The server will start on `http://localhost:3001` with auto-reload on file changes.
+The server starts on http://localhost:3001. Migrations run automatically on startup. If the database is unavailable, TTS and assistant routes still work — only DB-backed routes will fail.
 
 ## Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `PORT` | Server port | `3001` |
-| `NODE_ENV` | Environment | `development` |
-| `DB_HOST` | PostgreSQL host | `localhost` |
-| `DB_PORT` | PostgreSQL port | `5432` |
-| `DB_NAME` | Database name | `souschef_db` |
-| `DB_USER` | Database user | `souschef_user` |
-| `DB_PASSWORD` | Database password | - |
-| `JWT_SECRET` | JWT signing secret | - |
-| `JWT_EXPIRES_IN` | JWT expiration | `7d` |
-| `REDIS_HOST` | Redis host | `localhost` |
-| `REDIS_PORT` | Redis port | `6379` |
-| `CLAUDE_API_KEY` | Anthropic Claude API key | - |
-| `ELEVENLABS_API_KEY` | ElevenLabs API key | - |
-| `INSTACART_API_KEY` | Instacart API key | - |
+Copy `envExample.txt` to `.env` and fill in the values.
 
-## API Endpoints
+Required to run:
+- `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`
+- `JWT_SECRET`, `JWT_REFRESH_SECRET`
 
-### Authentication
+Required for recipe capture:
+- `GCP_VISION_API_KEY` — extracts text from uploaded photos
+- `GEMMA_API_KEY` — parses extracted text into structured recipes
 
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| POST | `/api/auth/signup` | Register new user | No |
-| POST | `/api/auth/login` | User login | No |
-| POST | `/api/auth/refresh` | Refresh JWT token | No |
-| GET | `/api/auth/me` | Get current user | Yes |
-| PUT | `/api/auth/profile` | Update user profile | Yes |
-| DELETE | `/api/auth/account` | Delete user account | Yes |
+Required for cooking mode audio:
+- `ELEVENLABS_API_KEY` — text-to-speech for step readout
 
-### Recipes
+## API Routes
 
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| GET | `/api/recipes` | Get user's recipes | Yes |
-| GET | `/api/recipes/public` | Get public recipes | No |
-| GET | `/api/recipes/:id` | Get recipe by ID | No* |
-| POST | `/api/recipes` | Create new recipe | Yes |
-| PUT | `/api/recipes/:id` | Update recipe | Yes |
-| DELETE | `/api/recipes/:id` | Delete recipe | Yes |
-| POST | `/api/recipes/:id/fork` | Fork a recipe | Yes |
-| POST | `/api/recipes/capture` | Upload video/image for AI parsing | Yes |
-| POST | `/api/recipes/from-url` | Extract recipe from URL | Yes |
+**Auth** (`/api/auth`)
+- `POST /signup` — create account
+- `POST /login` — get JWT
+- `POST /refresh` — refresh token
+- `GET /me` — current user
+- `PUT /profile` — update profile
 
-*Public recipes or owned by authenticated user
+**Recipes** (`/api/recipes`)
+- `GET /` — list user's recipes
+- `GET /:id` — get recipe with ingredients and steps
+- `POST /from-url` — import recipe from any URL or YouTube link
+- `POST /capture` — import recipe from a photo upload
+- `DELETE /:id` — delete a recipe
 
-### Cooking
+**Cooking** (`/api/cook`)
+- `POST /:recipeId/start` — start a cooking session
+- `GET /session/:sessionId` — get session state
+- `PATCH /session/:sessionId/step` — advance to a step
+- `POST /session/:sessionId/complete` — end session with optional rating
+- `GET /session/:sessionId/timers` — get timers for current and upcoming steps
+- `GET /history` — past cooking sessions
 
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| POST | `/api/cook/:recipeId/start` | Start cooking session | Yes |
-| GET | `/api/cook/session/:sessionId` | Get session state | Yes |
-| PATCH | `/api/cook/session/:sessionId/step` | Update current step | Yes |
-| POST | `/api/cook/:recipeId/ask` | Ask AI question during cooking | Yes |
-| POST | `/api/cook/session/:sessionId/complete` | Complete cooking session | Yes |
-| GET | `/api/cook/history` | Get cooking history | Yes |
-| GET | `/api/cook/session/:sessionId/timers` | Get active timers | Yes |
+**Voice Assistant** (`/api/assistant`)
+- `POST /command` — process a voice command against the current recipe and step
 
-### Grocery
+**Text-to-Speech** (`/api/tts`)
+- `POST /generate` — convert a step instruction to audio via ElevenLabs
 
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| GET | `/api/grocery/list` | Get grocery list | Yes |
-| POST | `/api/grocery/list` | Create grocery list | Yes |
-| PUT | `/api/grocery/list/:listId` | Update list name | Yes |
-| DELETE | `/api/grocery/list/:listId` | Delete grocery list | Yes |
-| POST | `/api/grocery/add-from-recipe` | Add recipe ingredients | Yes |
-| POST | `/api/grocery/list/:listId/items` | Add custom item | Yes |
-| PATCH | `/api/grocery/items/:itemId` | Update item | Yes |
-| DELETE | `/api/grocery/items/:itemId` | Remove item | Yes |
-| POST | `/api/grocery/clear-checked` | Clear checked items | Yes |
-| POST | `/api/grocery/checkout` | Generate Instacart link | Yes |
-| GET | `/api/grocery/instacart/products` | Search Instacart products | Yes |
+**Health**
+- `GET /api/health` — server status
 
-## Database Schema
+## Database
 
-### Tables
+Migrations run automatically on startup via `npm run migrate`. To seed sample data:
 
-- **users** - User accounts and profiles
-- **refresh_tokens** - JWT refresh tokens
-- **recipes** - Recipe metadata
-- **ingredients** - Recipe ingredients
-- **cooking_steps** - Recipe cooking steps
-- **recipe_collections** - User recipe collections
-- **recipe_collection_items** - Collection-recipe associations
-- **recipe_ratings** - User recipe ratings
-- **cooking_sessions** - Active/completed cooking sessions
-- **grocery_lists** - User grocery lists
-- **grocery_list_items** - Grocery list items
-- **recipe_version_history** - Recipe change history
+```bash
+npm run seed
+```
 
-## AI Integration (Pending)
+Seeds two demo users and three sample recipes.
 
-The following endpoints are prepared for AI integration:
+## How Recipe Import Works
 
-### Claude API (Recipe Parsing)
-- `POST /api/recipes/capture` - Parse video/image uploads
-- `POST /api/recipes/from-url` - Extract recipes from URLs
-- `POST /api/cook/:recipeId/ask` - AI-powered cooking Q&A
+1. **Photo upload** — image buffer is sent to Google Cloud Vision for text extraction, then the extracted text is parsed into structured JSON by Gemini.
+2. **URL import** — the URL is scraped for HTML content. YouTube URLs fetch the video transcript directly. The content is then parsed by Gemini.
+3. **Fallback** — if the AI service is unavailable or the API key is missing, a placeholder recipe is returned so the request does not fail silently.
 
-### ElevenLabs API (Voice)
-- Voice narration for cooking steps
-- Text-to-speech for AI responses
+## Voice Command Logic
 
-### Instacart API (Grocery)
-- `POST /api/grocery/checkout` - Pre-filled cart generation
-- `GET /api/grocery/instacart/products` - Product search
+The assistant route handles voice commands locally using a heuristic engine. It does not make an AI API call for every command. Navigation words ("next", "back", "repeat") are matched directly. Ingredient questions are matched against the recipe's ingredient list. Unknown commands return a prompt telling the user what commands are available.
 
-## License
+## Docker Services
 
-MIT
+| Service | Port | Notes |
+|---|---|---|
+| API | 3001 | Auto-restarts on file change in dev |
+| PostgreSQL | 5432 | Data persisted in Docker volume |
+| Redis | 6379 | Optional, used for rate limiting |

@@ -1,34 +1,46 @@
 # Souschef
 
-> Work in progress. Built for the [Bear Hacks 2026](https://bearhacks.com) hackathon.
+> Built for the [Bear Hacks 2026](https://bearhacks.com) hackathon.
 
-A recipe management app built with Next.js. Souschef lets you capture, organize, and cook through recipes with AI-powered parsing and step-by-step guidance.
+# Souschef
 
----
+Your recipe library, standardized. Your kitchen, hands-free.
 
-## What It Does
+Recipes come from everywhere: YouTube videos, food blogs, handwritten cards, screenshots, your aunt's email. They all look different, use different units, and live in different places. Souschef pulls them into one consistent format so you can actually cook from them.
 
-- Capture recipes from a URL or by uploading a video/image
-- Parse raw content into structured recipes using the Claude API
-- Step through cooking instructions with a guided cook mode
-- Ask questions mid-cook and get AI-powered answers
-- Add recipe ingredients directly to an Instacart cart
+## Features
 
----
+### One format for everything
+
+Every recipe you add, regardless of source, gets structured the same way: a clean ingredient list with standardized units, numbered steps, prep time, cook time, serving size, and difficulty. No more hunting through a blog post for the actual instructions. No more decoding someone else's shorthand.
+
+### Hands-free cooking mode
+
+When your hands are covered in flour or raw chicken, touching your phone is not an option. Souschef reads each cooking step aloud so you can keep your hands where they belong. Use voice commands to advance steps, repeat instructions, or pause a timer without touching anything.
+
+### Built-in timers per step
+
+Each cooking step with a time component has its own timer. You do not need to juggle a separate timer app or try to remember how long something has been on the heat.
+
+### Add recipes from anywhere
+
+- Paste a URL from any recipe site
+- Upload a photo of a recipe card or cookbook page
+- Record a cooking video and Souschef extracts the recipe from it
+- Type or paste raw text
+
+Whatever format it starts in, it ends up in the same clean structure.
 
 ## Tech Stack
 
 - Next.js 14
 - React 18
-- Tailwind CSS 4
+- Tailwind CSS v4
 - TypeScript
-- lucide-react (icons)
 
----
+The current version is a frontend prototype. All recipe data is mocked and API calls are simulated with `setTimeout`. Backend integration points are marked throughout the source with `// TODO: BACKEND INTEGRATION`.
 
 ## Getting Started
-
-**Prerequisites:** Node.js 18+
 
 ```bash
 git clone https://github.com/TheCanadianYeti/Souschef.git
@@ -37,70 +49,16 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:3000` in your browser.
-
----
+Open http://localhost:3000.
 
 ## Project Structure
 
 ```
-src/          # Next.js app source
-public/fonts/ # Local font files
-.next/        # Next.js build output (generated)
+src/          React components and pages
+public/fonts/ Custom fonts
+extract.py    Content extraction utility
 ```
 
----
+## Backend
 
-## Current State
-
-The frontend is a working prototype with mock data. Backend integration is not yet implemented. All API calls currently use simulated `setTimeout` responses.
-
-Look for `// TODO: BACKEND INTEGRATION` comments throughout the React source to find every integration point.
-
----
-
-## Backend (Not Yet Implemented)
-
-See `backend_implementation_guide.txt` for the full spec. The planned backend requires:
-
-**Database (PostgreSQL)**
-- Users, Recipes, Ingredients, CookingSteps tables
-
-**Auth**
-- Auth0 + JWT for protected routes
-
-**API (Node.js + Express)**
-- `GET /recipes` — fetch user's recipe library
-- `GET /recipes/:id` — fetch recipe with ingredients and steps
-- `PUT /recipes/:id` — update a recipe
-- `DELETE /recipes/:id` — delete a recipe
-- `POST /recipes/capture` — upload video/image, parse with Claude API
-- `POST /recipes/from-url` — scrape URL, parse with Claude API
-- `POST /cook/:recipe_id/ask` — mid-cook Q&A via Claude API
-- `POST /grocery/checkout` — generate Instacart cart link
-
-**External Services**
-- Claude API — recipe parsing and cook-mode Q&A
-- ElevenLabs API — text-to-speech for cooking steps (planned upgrade from Web Speech API)
-- Instacart API — grocery cart deep linking
-- Redis — rate limiting and caching for AI endpoints
-
----
-
-## Development Scripts
-
-| Command | Description |
-|---|---|
-| `npm run dev` | Start development server |
-| `npm run build` | Build for production |
-| `npm run start` | Start production server |
-
----
-
-## Contributing
-
-1. Fork the repo
-2. Create a feature branch
-3. Submit a pull request
-
-For bugs and feature requests, open an issue.
+The backend is implemented separately. See [`/backend`](./backend) for its own README and setup instructions.
