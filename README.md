@@ -2,6 +2,8 @@
 
 > Built for [Bear Hacks 2026](https://bearhacks.com)
 
+***THE APIS HAVE BEEN DEACTIVATED! THE WEBSITE IS NO LONGER FULLY FUNCTIONAL!*** 
+
 Your recipe library, standardized. Your kitchen, hands-free.
 
 Recipes come from everywhere: YouTube videos, food blogs, handwritten cards, screenshots, your aunt's email. They all look different, use different units, and live in different places. Souschef pulls them into one consistent format so you can actually cook from them.
