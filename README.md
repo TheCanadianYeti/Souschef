@@ -96,3 +96,15 @@ extract.py    Content extraction utility
 ## Backend
 
 Backend integration points are marked throughout the source with `// TODO: BACKEND INTEGRATION`. See `backend_implementation_guide.txt` for the full API spec and database schema.
+
+## Authors
+
+[Marcus Podnar](https://marcus.podnar.ca) · [GitHub](https://github.com/TheCanadianYeti) · [LinkedIn](https://www.linkedin.com/in/marcus-podnar)
+
+Mohammad (Nasif) Parvez · [GitHub](https://github.com/nasifparvez) · [LinkedIn](https://www.linkedin.com/in/nasifp/)
+
+Anh Tran · [GitHub](https://github.com/altraan) · [LinkedIn](https://www.linkedin.com/in/m-anhtran/)
+
+Diego Pachas · [GitHub](https://github.com/diego-pac10) · [LinkedIn](https://www.linkedin.com/in/diego-pachas-b09b51173/)
+
+
